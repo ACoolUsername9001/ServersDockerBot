@@ -4,6 +4,7 @@ ARG minecraft_version='vanila/latest'
 ARG mods=''
 ENTRYPOINT ["java", "-jar", "server.jar"]
 # CMD ["-Xms1024M", "-Xmx2048M"]
+RUN mkdir /opt/minecraft && mkdir /opt/minecraft/runner
 RUN addgroup runner && adduser -D -h /opt/minecraft/runner -s /bin/sh -G runner runner
 RUN apk update && apk upgrade && apk add --no-cache openjdk17
 WORKDIR /opt/minecraft/runner
