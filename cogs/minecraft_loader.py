@@ -91,21 +91,16 @@ class MinecraftCommands(commands.Cog):
     @app_commands.guilds(699402987776245873, 1013092707494809700)
     @app_commands.describe(game='What kind of server to start')
     async def start_container(self, interaction: discord.Interaction, game: str):
-        userid = interaction.user.id
-        containers = self.docker.containers.list(all=True, filters={'name': self.format_container_name(userid, game)})
-        running_containers = self.docker.containers.list(filters={'name': userid, 'status': 'running'})
-        if len(running_containers) > 0:
-            await interaction.response.send_message(f'You already have a running server')
-            return
-
+        containers = self.docker.containers.list(all=True, filters={'name': game})
         container = containers[0]
         container.start()
         container = self.docker.containers.get(container_id=container.id)
         available_ports = []
         for key, value in container.ports.items():
             protocol = key.split('/')[-1]
-            host_ports = [v['HostPort'] for v in value]
-            available_ports.extend(f'{port}/{protocol}' for port in host_ports)
+            if value and value.get('HostPort'):
+                host_ports = [v['HostPort'] for v in value]
+                available_ports.extend(f'{port}/{protocol}' for port in host_ports)
         await interaction.response.send_message(f'Starting {game} on port(s): {",".join(available_ports)}')
 
     @create.autocomplete('game')
