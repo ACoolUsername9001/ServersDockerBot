@@ -93,7 +93,7 @@ class MinecraftCommands(commands.Cog):
     @app_commands.guilds(699402987776245873, 1013092707494809700)
     @app_commands.describe(game='What kind of server to start')
     async def start_container(self, interaction: discord.Interaction, game: str):
-        containers = self.docker.containers.list(all=True, filters={'name': self.format_container_name(game), 'ancestor': GAMES_REPOSITORY})
+        containers = self.docker.containers.list(all=True, filters={'name': self.format_container_name(game)})
         if not containers:
             return
         container = containers[0]
