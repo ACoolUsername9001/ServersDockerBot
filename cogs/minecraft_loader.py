@@ -91,7 +91,9 @@ class MinecraftCommands(commands.Cog):
     @app_commands.guilds(699402987776245873, 1013092707494809700)
     @app_commands.describe(game='What kind of server to start')
     async def start_container(self, interaction: discord.Interaction, game: str):
-        containers = self.docker.containers.list(all=True, filters={'name': game})
+        containers = self.docker.containers.list(all=True, filters={'name': game, 'ancestor': GAMES_REPOSITORY})
+        if not containers:
+            return
         container = containers[0]
         container.start()
         container = self.docker.containers.get(container_id=container.id)
@@ -113,19 +115,19 @@ class MinecraftCommands(commands.Cog):
 
     @start_container.autocomplete('game')
     async def autocomplete_all_containers(self, interaction: Interaction, current: str):
-        games = self.docker.containers.list(all=True, filters={'name': current})
+        games = self.docker.containers.list(all=True, filters={'name': current, 'ancestor': GAMES_REPOSITORY})
         return [Choice(name=game.name, value=game.name) for game in games]
 
     @delete.autocomplete('game')
     async def autocomplete_user_containers(self, interaction: Interaction, current: str):
         userid = interaction.user.id
-        games = self.docker.containers.list(all=True, filters={'name': self.format_container_name(userid, current)})
+        games = self.docker.containers.list(all=True, filters={'name': self.format_container_name(userid, current), 'ancestor': GAMES_REPOSITORY})
         return [Choice(name='-'.join(game.name.split('-')[1:]), value='-'.join(game.name.split('-')[1:])) for game in games]
 
     @run_command.autocomplete('game')
     async def autocomplete_user_active_containers(self, interaction: Interaction, current: str):
         userid = interaction.user.id
-        games = self.docker.containers.list(filters={'name': self.format_container_name(userid, current)})
+        games = self.docker.containers.list(filters={'name': self.format_container_name(userid, current), 'ancestor': GAMES_REPOSITORY})
         return [Choice(name='-'.join(game.name.split('-')[1:]), value='-'.join(game.name.split('-')[1:])) for game in games]
 
 
