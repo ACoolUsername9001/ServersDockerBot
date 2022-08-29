@@ -68,8 +68,7 @@ class MinecraftCommands(commands.Cog):
     @app_commands.guilds(699402987776245873, 1013092707494809700)
     @app_commands.describe(command='command to run')
     async def run_command(self, interaction: Interaction, game: str, command: str):
-        userid = interaction.user.id
-        containers = self.docker.containers.list(filters={'name': self.format_container_name(userid, game)})
+        containers = self.docker.containers.list(filters={'name': self.format_container_name(game)})
         if not len(containers) == 1:
             await interaction.response.send_message(f'You don\'t have a server of type {game} running')
             return
