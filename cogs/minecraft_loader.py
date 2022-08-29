@@ -27,8 +27,8 @@ class MinecraftCommands(commands.Cog):
     @app_commands.command(name='create', description='This will create a new minecraft server')
     @app_commands.checks.has_permissions(administrator=True)
     @app_commands.guilds(699402987776245873, 1013092707494809700)
-    @app_commands.describe(game='Game Server')
-    async def create(self, interaction: Interaction, game: str):
+    @app_commands.describe(game='Game Server', server_port='The port the server is listening on')
+    async def create(self, interaction: Interaction, game: str, server_port: str):
         userid = interaction.user.id
         if len(self.docker.containers.list(all=True, filters={'name': userid})) > SERVERS_LIMIT:
             await interaction.response.send_message(f'You have already created a server, each user is limited to {SERVERS_LIMIT} servers', ephemeral=True)
@@ -37,7 +37,7 @@ class MinecraftCommands(commands.Cog):
             await interaction.response.send_message(f'You have already created a server of that version, limited to 1 per user', ephemeral=True)
             return
         try:
-            self.docker.containers.create(image=f'{GAMES_REPOSITORY}:{game}', name=self.format_container_name(userid, game), stdin_open=True, ports={25565: 25565}, tty=True)
+            self.docker.containers.create(image=f'{GAMES_REPOSITORY}:{game}', name=self.format_container_name(userid, game), stdin_open=True, ports={server_port: None}, tty=True)
             await interaction.response.send_message(f'Created server {game}', ephemeral=True)
         except Exception as e:
             logging.error(f'Failed to create container: {e}', exc_info=True)
@@ -69,7 +69,7 @@ class MinecraftCommands(commands.Cog):
         userid = interaction.user.id
         containers = self.docker.containers.list(filters={'name': self.format_container_name(userid, game)})
         if not len(containers) == 1:
-            await interaction.response.send_message(f'You don\'t have a server of type {game} running', ephemeral=True)
+            await interaction.response.send_message(f'You don\'t have a server of type {game} running')
             return
 
         container = containers[0]
@@ -80,7 +80,7 @@ class MinecraftCommands(commands.Cog):
         if r.replace(b'\r', b'').replace(b'\n', b'') == command.encode('utf-8'):
             r = os.read(sin.fileno(), 2048)
         sin.close()
-        await interaction.response.send_message(r.decode('utf-8'), ephemeral=True)
+        await interaction.response.send_message(r.decode('utf-8'))
 
     @commands.command(name='sync')
     async def sync(self, ctx: commands.Context, guild: Optional[discord.Guild] = None):
@@ -95,12 +95,18 @@ class MinecraftCommands(commands.Cog):
         containers = self.docker.containers.list(all=True, filters={'name': self.format_container_name(userid, game)})
         running_containers = self.docker.containers.list(filters={'name': userid, 'status': 'running'})
         if len(running_containers) > 0:
-            await interaction.response.send_message(f'You already have a running server', ephemeral=True)
+            await interaction.response.send_message(f'You already have a running server')
             return
 
         container = containers[0]
         container.start()
-        await interaction.response.send_message(f'Starting {game}', ephemeral=True)
+        container = self.docker.containers.get(container_id=container.id)
+        available_ports = []
+        for key, value in container.ports.items():
+            protocol = key.split('/')[-1]
+            host_ports = [v['HostPort'] for v in value]
+            available_ports.extend(f'{port}/{protocol}' for port in host_ports)
+        await interaction.response.send_message(f'Starting {game} on port(s): {",".join(available_ports)}')
 
     @create.autocomplete('game')
     async def auto_complete_all_images(self, interaction: Interaction, current: str):
