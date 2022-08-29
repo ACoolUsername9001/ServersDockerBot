@@ -124,7 +124,7 @@ class MinecraftCommands(commands.Cog):
     async def autocomplete_user_containers(self, interaction: Interaction, current: str):
         userid = interaction.user.id
         games = self.docker.containers.list(all=True, filters={'name': self.format_container_name(userid, current)})
-        return [Choice(name='-'.join(game.name.split('-')[1:]), value='-'.join(game.name.split('-')[1:])) for game in games]
+        return [Choice(name='-'.join(game.name.split('-')[2:]), value='-'.join(game.name.split('-')[2:])) for game in games]
 
     @run_command.autocomplete('game')
     async def autocomplete_user_active_containers(self, interaction: Interaction, current: str):
