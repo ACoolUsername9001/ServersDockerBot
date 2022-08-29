@@ -117,6 +117,10 @@ class MinecraftCommands(commands.Cog):
         return choices
 
     @start_container.autocomplete('game')
+    async def autocomplete_all_containers(self, interaction: Interaction, current: str):
+        games = self.docker.containers.list(all=True, filters={'name': current})
+        return [Choice(name=game.name, value=game.name) for game in games]
+
     @delete.autocomplete('game')
     async def autocomplete_user_containers(self, interaction: Interaction, current: str):
         userid = interaction.user.id
