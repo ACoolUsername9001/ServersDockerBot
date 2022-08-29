@@ -102,7 +102,7 @@ class MinecraftCommands(commands.Cog):
         available_ports = []
         for key, value in container.ports.items():
             protocol = key.split('/')[-1]
-            if value and value[0].get('HostPort'):
+            if value:
                 host_ports = [v['HostPort'] for v in value]
                 available_ports.extend(f'{port}/{protocol}' for port in host_ports)
         await interaction.response.send_message(f'Starting {game} on port(s): {",".join(available_ports)}')
