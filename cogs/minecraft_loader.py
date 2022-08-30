@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 from typing import Optional
 import discord
 import docker
@@ -9,6 +10,7 @@ from discord.ext import commands
 
 SERVERS_LIMIT = 5
 GAMES_REPOSITORY = 'games'
+ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
 
 
 class MinecraftCommands(commands.Cog):
@@ -78,7 +80,8 @@ class MinecraftCommands(commands.Cog):
 
         os.write(sin.fileno(), f'{command}\n'.encode('utf-8'))
         with open(sin.fileno(), 'r') as f:
-            while command in (r := f.readline()):
+            while command in (r := ansi_escape.sub('', f.readline()).replace('\n', '').replace('\r', '')) or not r or r == '>':
+                print(r)
                 pass
         sin.close()
         await interaction.response.send_message(r[:2000])
