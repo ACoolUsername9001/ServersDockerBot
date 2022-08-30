@@ -104,7 +104,7 @@ class MinecraftCommands(commands.Cog):
             if value:
                 host_ports = [v['HostPort'] for v in value]
                 available_ports.extend(f'{port}/{protocol}' for port in host_ports)
-        await interaction.response.send_message(f'Starting {await self.get_display_name_from_container_name(game)} on port(s): {",".join(available_ports)}')
+        await interaction.response.send_message(f'Starting {await self.get_display_name_from_container_name(container.name)} on port(s): {",".join(available_ports)}')
 
     @create.autocomplete('game')
     async def auto_complete_all_images(self, interaction: Interaction, current: str):
