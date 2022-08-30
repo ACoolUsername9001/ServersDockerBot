@@ -77,12 +77,11 @@ class MinecraftCommands(commands.Cog):
         sin = container.attach_socket(params={'stdin': True, 'stream': True, 'stdout': True, 'stderr': True})
 
         os.write(sin.fileno(), f'{command}\n'.encode('utf-8'))
-        r = os.read(sin.fileno(), 100000)
-        if command in r.decode():
-            r = os.read(sin.fileno(), 100000)
+        with open(sin.fileno(), 'r') as f:
+            while command in (r := f.readline()):
+                pass
         sin.close()
-        logging.info(f'{r=}')
-        await interaction.response.send_message(r.decode('utf-8')[:2000])
+        await interaction.response.send_message(r[:2000])
 
     @commands.command(name='sync')
     async def sync(self, ctx: commands.Context, guild: Optional[discord.Guild] = None):
