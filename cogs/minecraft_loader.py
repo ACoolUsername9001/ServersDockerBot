@@ -10,7 +10,7 @@ from discord.ext import commands
 
 SERVERS_LIMIT = 5
 GAMES_REPOSITORY = 'games'
-ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+ansi_escape = re.compile(br'(?:\x1B[@-Z\\-_]|[\x80-\x9A\x9C-\x9F]|(?:\x1B\[|\x9B)[0-?]*[ -/]*[@-~])')
 
 
 class MinecraftCommands(commands.Cog):
@@ -79,9 +79,8 @@ class MinecraftCommands(commands.Cog):
         sin = container.attach_socket(params={'stdin': True, 'stream': True, 'stdout': True, 'stderr': True})
 
         os.write(sin.fileno(), f'{command}\n'.encode('utf-8'))
-        with open(sin.fileno(), 'r') as f:
-            while command in (r := ansi_escape.sub('', f.readline()).replace('\n', '').replace('\r', '')) or not r or r == '>':
-                print(r)
+        with open(sin.fileno(), 'rb') as f:
+            while command in (r := ansi_escape.sub(b'', f.readline()).decode().replace('\n', '').replace('\r', '')) or not r or r == '>':
                 pass
         sin.close()
         await interaction.response.send_message(r[:2000])
