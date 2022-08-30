@@ -114,21 +114,31 @@ class MinecraftCommands(commands.Cog):
             choices.extend([Choice(name=tag.split(':')[1], value=tag.split(':')[1]) for tag in game.tags if tag.startswith(current)])
         return choices
 
+    def get_display_name_from_container_name(self, container_name):
+        container_parts = container_name.split('-')[1:]
+        user_id = container_parts[0]
+        user = self.bot.get_user(user_id)
+        user_name = user.name
+        container_parts[0] = user_name
+
+        new_container_name = ' '.join(container_parts).capitalize()
+        return new_container_name
+
     @start_container.autocomplete('game')
     async def autocomplete_all_containers(self, interaction: Interaction, current: str):
         games = self.docker.containers.list(all=True, filters={'name': self.format_container_name(current)})
-        return [Choice(name='-'.join(game.name.split('-')[1:]), value='-'.join(game.name.split('-')[1:])) for game in games]
+        return [Choice(name=self.get_display_name_from_container_name(game.name), value='-'.join(game.name.split('-')[1:])) for game in games]
 
     @delete.autocomplete('game')
     async def autocomplete_user_containers(self, interaction: Interaction, current: str):
         userid = interaction.user.id
         games = self.docker.containers.list(all=True, filters={'name': self.format_container_name(userid, current)})
-        return [Choice(name='-'.join(game.name.split('-')[2:]), value='-'.join(game.name.split('-')[2:])) for game in games]
+        return [Choice(name=self.get_display_name_from_container_name(game.name), value='-'.join(game.name.split('-')[2:])) for game in games]
 
     @run_command.autocomplete('game')
     async def autocomplete_user_active_containers(self, interaction: Interaction, current: str):
         games = self.docker.containers.list(filters={'name': self.format_container_name(current)})
-        return [Choice(name='-'.join(game.name.split('-')[1:]), value='-'.join(game.name.split('-')[1:])) for game in games]
+        return [Choice(name=self.get_display_name_from_container_name(game.name), value='-'.join(game.name.split('-')[1:])) for game in games]
 
 
 async def setup(bot: commands.Bot):
