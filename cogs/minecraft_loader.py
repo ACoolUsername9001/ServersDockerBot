@@ -53,7 +53,7 @@ class MinecraftCommands(commands.Cog):
         userid = interaction.user.id
         containers = self.docker.containers.list(all=True, filters={'name': self.format_container_name(userid, game)})
         if len(containers) == 0:
-            await interaction.response.send_message(f'You do not have a server of game {await self.get_display_name_from_container_name(game, with_username=False)}', ephemeral=True)
+            await interaction.response.send_message(f'You do not have a server of game {await self.get_display_name_from_container_name(self.format_container_name(game), with_username=False)}', ephemeral=True)
             return
         try:
             for container in containers:
