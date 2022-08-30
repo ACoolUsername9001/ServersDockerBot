@@ -58,7 +58,7 @@ class MinecraftCommands(commands.Cog):
         try:
             for container in containers:
                 container.remove(force=True)
-            await interaction.response.send_message(f'Deleted game {await self.get_display_name_from_container_name(game, with_username=False)}', ephemeral=True)
+            await interaction.response.send_message(f'Deleted game {await self.get_display_name_from_container_name(self.format_container_name(game), with_username=False)}', ephemeral=True)
         except Exception as e:
             logging.error(f'Failed to delete container: {e}', exc_info=True)
             await interaction.response.send_message(f'Failed to delete server please try again later.', ephemeral=True)
