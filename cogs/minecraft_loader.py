@@ -114,13 +114,16 @@ class MinecraftCommands(commands.Cog):
             choices.extend([Choice(name=tag.split(':')[1].replace('-', ' ').title(), value=tag.split(':')[1]) for tag in game.tags if tag.startswith(current)])
         return choices
 
-    async def get_display_name_from_container_name(self, container_name):
+    async def get_display_name_from_container_name(self, container_name, with_username=True):
         container_parts = container_name.split('-')[1:]
         user_id = container_parts[0]
         user = await self.bot.fetch_user(int(user_id))
 
         new_container_name = ' '.join(container_parts[1:]).title()
-        return f'{user.name}#{user.discriminator}\'s {new_container_name}'
+        if with_username:
+            return f'{user.name}#{user.discriminator}\'s {new_container_name}'
+        else:
+            return new_container_name
 
     @start_container.autocomplete('game')
     async def autocomplete_all_containers(self, interaction: Interaction, current: str):
@@ -131,7 +134,7 @@ class MinecraftCommands(commands.Cog):
     async def autocomplete_user_containers(self, interaction: Interaction, current: str):
         userid = interaction.user.id
         games = self.docker.containers.list(all=True, filters={'name': self.format_container_name(userid, current)})
-        return [Choice(name=await self.get_display_name_from_container_name(game.name), value='-'.join(game.name.split('-')[2:])) for game in games]
+        return [Choice(name=await self.get_display_name_from_container_name(game.name, with_username=False), value='-'.join(game.name.split('-')[2:])) for game in games]
 
     @run_command.autocomplete('game')
     async def autocomplete_user_active_containers(self, interaction: Interaction, current: str):
