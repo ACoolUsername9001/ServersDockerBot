@@ -77,9 +77,9 @@ class MinecraftCommands(commands.Cog):
         sin = container.attach_socket(params={'stdin': True, 'stream': True, 'stdout': True, 'stderr': True})
 
         os.write(sin.fileno(), f'{command}\n'.encode('utf-8'))
-        r = os.read(sin.fileno(), 10000)
-        if command.encode('utf-8') in r.replace(b'\r', b'').replace(b'\n', b''):
-            r = os.read(sin.fileno(), 10000)
+        r = os.read(sin.fileno(), 100000)
+        if command in r.decode():
+            r = os.read(sin.fileno(), 100000)
         sin.close()
         logging.info(f'{r=}')
         await interaction.response.send_message(r.decode('utf-8')[:2000])
