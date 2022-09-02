@@ -31,8 +31,10 @@ class MinecraftCommands(commands.Cog):
     @app_commands.command(name='create', description='This will create a new minecraft server')
     @app_commands.checks.has_permissions(administrator=True)
     @app_commands.guilds(699402987776245873, 1013092707494809700)
-    @app_commands.describe(game='Game Server', server_port='The port the server is listening on')
-    async def create(self, interaction: Interaction, game: str, server_port: str):
+    @app_commands.describe(game='Game Server',
+                           server_ports='Space seperated list of ports the server is listening on',
+                           command_parameters='Optional parameters to pass to the server')
+    async def create(self, interaction: Interaction, game: str, server_ports: str, command_parameters: Optional[str] = None):
         userid = interaction.user.id
         if len(self.docker.containers.list(all=True, filters={'name': self.format_container_name(userid)})) > SERVERS_LIMIT:
             await interaction.response.send_message(f'You have already created a server, each user is limited to {SERVERS_LIMIT} servers', ephemeral=True)
@@ -41,7 +43,12 @@ class MinecraftCommands(commands.Cog):
             await interaction.response.send_message(f'You have already created a server of that version, limited to 1 per user', ephemeral=True)
             return
         try:
-            self.docker.containers.create(image=f'{GAMES_REPOSITORY}:{game}', name=self.format_container_name(userid, game), stdin_open=True, ports={server_port: None}, tty=True)
+            self.docker.containers.create(image=f'{GAMES_REPOSITORY}:{game}',
+                                          name=self.format_container_name(userid, game),
+                                          stdin_open=True,
+                                          ports={server_port: None for server_port in server_ports.split()},
+                                          tty=True,
+                                          command=command_parameters)
             await interaction.response.send_message(f'Created server {game.replace("-", " ").title()}', ephemeral=True)
         except Exception as e:
             logging.error(f'Failed to create container: {e}', exc_info=True)
