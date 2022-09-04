@@ -16,7 +16,7 @@ FILE_BROWSER_IMAGE = 'filebrowser/filebrowser'
 
 ansi_escape = re.compile(br'(?:\x1B[@-Z\\-_]|[\x80-\x9A\x9C-\x9F]|(?:\x1B\[|\x9B)[0-?]*[ -/]*[@-~])')
 
-ports_format = re.compile(r'(?P<port>\d+)(?:/(?P<protocol>\w+))')
+ports_format = re.compile(r'(?P<port>\d+)(?:/(?P<protocol>\w+))?(?::(?P<destination>\d+))?')
 
 
 class GameNotFound(Exception):
@@ -123,17 +123,16 @@ class DockerRunner:
 
     @staticmethod
     def _find_suitable_ports(ports: List[str]) -> Dict[str, Optional[str]]:
-        # port_mapping = defaultdict(list)
-        # for port in ports:
-        #     match = ports_format.match(port).groupdict()
-        #     port = match.get('port')
-        #     protocol = match.get('protocol', 'tcp')
-        #     port_mapping[port].append(protocol)
-        #
-        # for port, protocols in port_mapping.items():
-        #       TODO: add custom port finding logic
-        #
-        return {port: None for port in ports}
+        suitable_ports = {}
+        for port in ports:
+            match = ports_format.match(port).groupdict()
+            port_number = match.get('port')
+            protocol = match.get('protocol', 'tcp')
+            if protocol is None:
+                protocol = 'tcp'
+            destination = match.get('destination', None)
+            suitable_ports[f'{port_number}/{protocol}'] = destination
+        return suitable_ports
 
     @staticmethod
     def get_ports_from_container(container) -> List[str]:
