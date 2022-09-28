@@ -79,7 +79,7 @@ class ContainerCommands(commands.Cog):
                            server_ports='Space separated list of ports the server is listening on',
                            command_parameters='Optional parameters to pass to the server')
     async def start_container(self, interaction: discord.Interaction, game: str, server_ports: Optional[str] = None, command_parameters: Optional[str] = None):
-        if server_ports:
+        if server_ports is not None:
             ports = server_ports.split()
         else:
             ports = None
