@@ -8,12 +8,12 @@ from discord.ext import commands
 from cogs.docker_runner import DockerRunner
 
 
-class MinecraftCommands(commands.Cog):
+class ContainerCommands(commands.Cog):
 
-    def __init__(self, bot: commands.Bot, docker_runner: DockerRunner = None, **kwargs):
-        if not docker_runner:
-            docker_runner = DockerRunner()
-        self.docker = docker_runner
+    def __init__(self, bot: commands.Bot, container_runner: DockerRunner = None, **kwargs):
+        if not container_runner:
+            container_runner = DockerRunner()
+        self.docker = container_runner
         self.bot = bot
         super().__init__(**kwargs)
 
@@ -135,4 +135,4 @@ class MinecraftCommands(commands.Cog):
 
 
 async def setup(bot: commands.Bot):
-    await bot.add_cog(MinecraftCommands(bot=bot))
+    await bot.add_cog(ContainerCommands(bot=bot))

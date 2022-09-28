@@ -2,10 +2,10 @@ import json
 import discord
 from discord.ext.commands import Bot
 
-from cogs.server_loader import setup
+from cogs.container_commands import setup
 
 
-class MCBot(Bot):
+class ServersContainerBot(Bot):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -14,7 +14,7 @@ class MCBot(Bot):
 
 
 if __name__ == '__main__':
-    mcbot = MCBot(command_prefix=['!'], intents=discord.Intents.default())
+    mcbot = ServersContainerBot(command_prefix=['!'], intents=discord.Intents.default())
     with open('key.json', 'r') as f:
         keys = json.load(f)
     token = keys['token']
