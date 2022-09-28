@@ -53,7 +53,7 @@ class DockerRunner:
 
     @staticmethod
     def get_user_id_and_image_name_from_game_server_name(server_name):
-        match = re.match(r'(?P<userid>\d+)-(?P<server>.+)', server_name)
+        match = re.match(r'(?P<userid>\w+)-(?P<server>.+)', server_name)
         groups = match.groupdict()
         return groups.get('userid'), groups.get('server')
 
@@ -62,6 +62,11 @@ class DockerRunner:
 
     def _hide_file_browser_prefix(self, name):
         return name[len(self._filebrowser_prefix)+1:]
+
+    def list_game_ports(self, tag) -> list[str]:
+        image = self.docker.images.get(self._format_image_name(tag=tag))
+        ports = list(image.attrs.get('Config', {}).get('ExposedPorts', {}).keys())
+        return ports
 
     def _format_game_container_name(self, user_id=None, game=None) -> str:
         if not game:
@@ -114,7 +119,7 @@ class DockerRunner:
         if game not in game_images:
             raise GameNotFound(f'Game {game} was not found')
 
-        return self.docker.volumes.create(name=self._format_game_container_name(user_id=user_id, game=game)).name
+        return self._hide_games_prefix(self.docker.volumes.create(name=self._format_game_container_name(user_id=user_id, game=game)).name)
 
     def _get_server_image_working_dir(self, image_tag):
         image_name = self._format_image_name(image_tag)
@@ -144,7 +149,7 @@ class DockerRunner:
                 available_ports.extend(f'{port}/{protocol}' for port in host_ports)
         return available_ports
 
-    def start_game_server(self, game, ports: List[str], command_parameters: Optional[str] = None) -> List[str]:
+    def start_game_server(self, game, ports: Optional[List[str]] = None, command_parameters: Optional[str] = None) -> List[str]:
         user_id, image_name = self.get_user_id_and_image_name_from_game_server_name(game)
         if image_name not in self.list_game_names():
             raise GameNotFound(f'Game {image_name} was not found')
@@ -163,6 +168,8 @@ class DockerRunner:
             mount = [Mount(target=working_dir, source=server_name, type='volume')]
         else:
             mount = None
+        if ports is None:
+            ports = self.list_game_ports(image_name)
 
         ports = self._find_suitable_ports(ports)
 

@@ -1,11 +1,6 @@
 import logging
-import os
-import re
 from typing import Optional
 import discord
-import docker
-from docker.errors import NotFound
-from docker.types import Mount
 from discord import app_commands, Interaction
 from discord.app_commands import Choice
 from discord.ext import commands
@@ -81,9 +76,9 @@ class MinecraftCommands(commands.Cog):
     @app_commands.checks.has_permissions(administrator=True)
     @app_commands.guilds(1013092707494809700)
     @app_commands.describe(game='What kind of server to start',
-                           server_ports='Space seperated list of ports the server is listening on',
+                           server_ports='Space separated list of ports the server is listening on',
                            command_parameters='Optional parameters to pass to the server')
-    async def start_container(self, interaction: discord.Interaction, game: str, server_ports: str, command_parameters: Optional[str] = None):
+    async def start_container(self, interaction: discord.Interaction, game: str, server_ports: Optional[str], command_parameters: Optional[str] = None):
         ports = server_ports.split()
         available_ports = self.docker.start_game_server(game=game, ports=ports, command_parameters=command_parameters)
         user_id, server = self.docker.get_user_id_and_image_name_from_game_server_name(game)

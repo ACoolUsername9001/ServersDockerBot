@@ -2,7 +2,7 @@ import json
 import discord
 from discord.ext.commands import Bot
 
-from cogs.minecraft_loader import setup
+from cogs.server_loader import setup
 
 
 class MCBot(Bot):
