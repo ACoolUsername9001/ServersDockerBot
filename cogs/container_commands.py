@@ -78,8 +78,12 @@ class ContainerCommands(commands.Cog):
     @app_commands.describe(game='What kind of server to start',
                            server_ports='Space separated list of ports the server is listening on',
                            command_parameters='Optional parameters to pass to the server')
-    async def start_container(self, interaction: discord.Interaction, game: str, server_ports: Optional[str], command_parameters: Optional[str] = None):
-        ports = server_ports.split()
+    async def start_container(self, interaction: discord.Interaction, game: str, server_ports: Optional[str] = None, command_parameters: Optional[str] = None):
+        if server_ports:
+            ports = server_ports.split()
+        else:
+            ports = None
+
         available_ports = self.docker.start_game_server(game=game, ports=ports, command_parameters=command_parameters)
         user_id, server = self.docker.get_user_id_and_image_name_from_game_server_name(game)
         await interaction.response.send_message(f'Starting {await self.format_display_name(user_id=user_id, server_name=server)} on port(s): {",".join(available_ports)}')
