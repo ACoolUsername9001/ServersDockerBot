@@ -147,6 +147,7 @@ class ContainerCommands(commands.Cog):
 
     @run_command.autocomplete('game')
     @get_server_ports.autocomplete('game')
+    @get_server_logs.autocomplete('game')
     async def autocomplete_user_active_containers(self, interaction: Interaction, current: str):
         games = self.docker.list_running_server_names()
         choices = []
