@@ -7,6 +7,8 @@ from discord.ext import commands
 
 from cogs.docker_runner import DockerRunner
 
+MAX_MESSAGE_SIZE = 2000
+
 
 class ContainerCommands(commands.Cog):
 
@@ -66,7 +68,7 @@ class ContainerCommands(commands.Cog):
     @app_commands.describe(command='command to run')
     async def run_command(self, interaction: Interaction, game: str, command: str):
         response = self.docker.run_command(game, command)
-        await interaction.response.send_message(response[:2000])
+        await interaction.response.send_message(response[:MAX_MESSAGE_SIZE])
 
     @app_commands.command(name='get-server-ports', description='Gets the ports the server is listening on')
     @app_commands.checks.has_permissions(administrator=True)
@@ -75,6 +77,15 @@ class ContainerCommands(commands.Cog):
         ports = self.docker.list_server_ports(server=game)
         user_id, server_name = self.docker.get_user_id_and_image_name_from_game_server_name(server_name=game)
         await interaction.response.send_message(f'{await self.format_display_name(user_id=user_id, server_name=server_name)} is listening on port(s): {",".join(ports)}')
+
+    @app_commands.command(name='get-server-logs', description='Gets the logs of a given server')
+    @app_commands.checks.has_permissions(administrator=True)
+    @app_commands.guilds(1013092707494809700)
+    async def get_server_logs(self, interaction: Interaction, game: str):
+        user_id, server_name = self.docker.get_user_id_and_image_name_from_game_server_name(server_name=game)
+        prefix = f'***{await self.format_display_name(server_name=server_name, user_id=user_id)} Logs***\n'
+        logs = self.docker.get_server_logs(server=game, limit=MAX_MESSAGE_SIZE-len(prefix))
+        await interaction.response.send_message(prefix+logs, ephemeral=True)
 
     @commands.command(name='sync')
     async def sync(self, ctx: commands.Context, guild: Optional[discord.Guild] = None):
