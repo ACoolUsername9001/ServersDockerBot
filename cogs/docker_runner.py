@@ -232,8 +232,8 @@ class DockerRunner:
             if f in read:
                 lines = 5
                 while lines > 0:
-                    r = ansi_escape.sub(b'', f.readline()).decode().replace('\n', '').replace('\r', '')
                     read, _, _ = select.select([f], [], [], 0)
+                    r = ansi_escape.sub(b'', f.readline()).decode().replace('\n', '').replace('\r', '')
                     if (command not in r and r not in ['>']) or (f not in read):
                         return r
                     lines -= 1
