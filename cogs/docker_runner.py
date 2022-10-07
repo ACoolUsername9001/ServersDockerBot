@@ -4,6 +4,7 @@ import re
 import time
 import chardet
 import docker
+import select
 from typing import Optional, List, Dict, Any, Union
 from docker.models.containers import Container
 from docker.models.images import Image
@@ -204,11 +205,17 @@ class DockerRunner:
 
         os.write(sin.fileno(), f'{command}\n'.encode('utf-8'))
         with open(sin.fileno(), 'rb') as f:
-            while command in (r := ansi_escape.sub(b'', f.readline()).decode().replace('\n', '').replace('\r', '')) or not r or r == '>':
-                pass
-        sin.close()
+            read, _, _ = select.select([f], [], [], 0)
+            if f in read:
+                lines = 5
+                while lines > 0:
+                    r = ansi_escape.sub(b'', f.readline()).decode().replace('\n', '').replace('\r', '')
+                    read, _, _ = select.select([f], [], [], 0)
+                    if (command not in r and r not in ['>']) or (f not in read):
+                        return r
+                    lines -= 1
 
-        return r
+        sin.close()
 
     async def async_run_command(self, server, command) -> str:
         try:
@@ -221,11 +228,17 @@ class DockerRunner:
 
         os.write(sin.fileno(), f'{command}\n'.encode('utf-8'))
         with open(sin.fileno(), 'rb') as f:
-            while command in (r := _convert_to_string(ansi_escape.sub(b'', f.readline())).replace('\n', '').replace('\r', '')) or not r or r == '>':
-                await asyncio.sleep(0)
+            read, _, _ = select.select([f], [], [], 0)
+            if f in read:
+                lines = 5
+                while lines > 0:
+                    r = ansi_escape.sub(b'', f.readline()).decode().replace('\n', '').replace('\r', '')
+                    read, _, _ = select.select([f], [], [], 0)
+                    if (command not in r and r not in ['>']) or (f not in read):
+                        return r
+                    lines -= 1
+                    await asyncio.sleep(0)
         sin.close()
-
-        return r
 
     def delete_game_server(self, user_id, game):
         server = self._format_game_container_name(user_id=user_id, game=game)
