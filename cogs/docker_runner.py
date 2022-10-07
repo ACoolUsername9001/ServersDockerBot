@@ -204,6 +204,7 @@ class DockerRunner:
         sin = container.attach_socket(params={'stdin': True, 'stream': True, 'stdout': True, 'stderr': True})
 
         os.write(sin.fileno(), f'{command}\n'.encode('utf-8'))
+        all_output = ''
         with open(sin.fileno(), 'rb') as f:
             read, _, _ = select.select([f], [], [], 0)
             if f in read:
@@ -211,14 +212,14 @@ class DockerRunner:
                 while lines > 0:
                     read, _, _ = select.select([f], [], [], 0)
                     if f not in read:
-                        return
+                        break
                     r = ansi_escape.sub(b'', f.readline()).decode().replace('\n', '').replace('\r', '')
-                    read, _, _ = select.select([f], [], [], 0)
-                    if (command not in r and r not in ['>']) or (f not in read):
+                    all_output += r
+                    if command not in r and r not in ['>']:
                         return r
                     lines -= 1
-
         sin.close()
+        return all_output
 
     async def async_run_command(self, server, command) -> Optional[str]:
         try:
@@ -230,6 +231,7 @@ class DockerRunner:
         sin = container.attach_socket(params={'stdin': True, 'stream': True, 'stdout': True, 'stderr': True})
 
         os.write(sin.fileno(), f'{command}\n'.encode('utf-8'))
+        all_output = ''
         with open(sin.fileno(), 'rb') as f:
             read, _, _ = select.select([f], [], [], 0)
             if f in read:
@@ -237,14 +239,15 @@ class DockerRunner:
                 while lines > 0:
                     read, _, _ = select.select([f], [], [], 0)
                     if f not in read:
-                        return
-
+                        break
                     r = ansi_escape.sub(b'', f.readline()).decode().replace('\n', '').replace('\r', '')
-                    if (command not in r and r not in ['>']) or (f not in read):
+                    all_output += r
+                    if command not in r and r not in ['>']:
                         return r
                     lines -= 1
                     await asyncio.sleep(0)
         sin.close()
+        return all_output
 
     def delete_game_server(self, user_id, game):
         server = self._format_game_container_name(user_id=user_id, game=game)
