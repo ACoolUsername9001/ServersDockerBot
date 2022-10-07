@@ -194,7 +194,7 @@ class DockerRunner:
         container = self.docker.containers.get(container_id=container.id)
         return self.get_ports_from_container(container)
 
-    def run_command(self, server, command) -> str:
+    def run_command(self, server, command) -> Optional[str]:
         try:
             user_id, image_name = self.get_user_id_and_image_name_from_game_server_name(server_name=server)
             container = self.docker.containers.get(self._format_game_container_name(user_id=user_id, game=image_name))
@@ -209,6 +209,9 @@ class DockerRunner:
             if f in read:
                 lines = 5
                 while lines > 0:
+                    read, _, _ = select.select([f], [], [], 0)
+                    if f not in read:
+                        return
                     r = ansi_escape.sub(b'', f.readline()).decode().replace('\n', '').replace('\r', '')
                     read, _, _ = select.select([f], [], [], 0)
                     if (command not in r and r not in ['>']) or (f not in read):
@@ -217,7 +220,7 @@ class DockerRunner:
 
         sin.close()
 
-    async def async_run_command(self, server, command) -> str:
+    async def async_run_command(self, server, command) -> Optional[str]:
         try:
             user_id, image_name = self.get_user_id_and_image_name_from_game_server_name(server_name=server)
             container = self.docker.containers.get(self._format_game_container_name(user_id=user_id, game=image_name))
@@ -233,6 +236,9 @@ class DockerRunner:
                 lines = 5
                 while lines > 0:
                     read, _, _ = select.select([f], [], [], 0)
+                    if f not in read:
+                        return
+
                     r = ansi_escape.sub(b'', f.readline()).decode().replace('\n', '').replace('\r', '')
                     if (command not in r and r not in ['>']) or (f not in read):
                         return r
