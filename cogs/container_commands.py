@@ -4,7 +4,7 @@ import discord
 from discord import app_commands, Interaction
 from discord.app_commands import Choice
 from discord.ext import commands
-
+import chardet
 from cogs.docker_runner import DockerRunner
 
 MAX_MESSAGE_SIZE = 2000
@@ -67,7 +67,7 @@ class ContainerCommands(commands.Cog):
     @app_commands.guilds(1013092707494809700)
     @app_commands.describe(command='command to run')
     async def run_command(self, interaction: Interaction, game: str, command: str):
-        response = self.docker.run_command(game, command)
+        response = await self.docker.async_run_command(game, command)
         await interaction.response.send_message(response[:MAX_MESSAGE_SIZE])
 
     @app_commands.command(name='get-server-ports', description='Gets the ports the server is listening on')

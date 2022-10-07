@@ -1,10 +1,10 @@
+import asyncio
 import os
 import re
 import time
-from collections import defaultdict
-
+import chardet
 import docker
-from typing import Optional, List, Dict, Tuple, Any
+from typing import Optional, List, Dict, Any, Union
 from docker.models.containers import Container
 from docker.models.images import Image
 from docker.models.volumes import Volume
@@ -17,6 +17,13 @@ FILE_BROWSER_IMAGE = 'filebrowser/filebrowser'
 ansi_escape = re.compile(br'(?:\x1B[@-Z\\-_]|[\x80-\x9A\x9C-\x9F]|(?:\x1B\[|\x9B)[0-?]*[ -/]*[@-~])')
 
 ports_format = re.compile(r'(?P<port>\d+)(?:/(?P<protocol>\w+))?(?::(?P<destination>\d+))?')
+
+
+def _convert_to_string(byte_str: Union[bytes, bytearray]) -> str:
+    encoding = chardet.detect(byte_str).get('encoding')
+    if encoding:
+        return byte_str.decode(encoding)
+    return byte_str.decode()
 
 
 class GameNotFound(Exception):
@@ -203,6 +210,23 @@ class DockerRunner:
 
         return r
 
+    async def async_run_command(self, server, command) -> str:
+        try:
+            user_id, image_name = self.get_user_id_and_image_name_from_game_server_name(server_name=server)
+            container = self.docker.containers.get(self._format_game_container_name(user_id=user_id, game=image_name))
+        except Exception as e:
+            raise ServerNotRunning(e)
+
+        sin = container.attach_socket(params={'stdin': True, 'stream': True, 'stdout': True, 'stderr': True})
+
+        os.write(sin.fileno(), f'{command}\n'.encode('utf-8'))
+        with open(sin.fileno(), 'rb') as f:
+            while command in (r := _convert_to_string(ansi_escape.sub(b'', f.readline())).replace('\n', '').replace('\r', '')) or not r or r == '>':
+                await asyncio.sleep(0)
+        sin.close()
+
+        return r
+
     def delete_game_server(self, user_id, game):
         server = self._format_game_container_name(user_id=user_id, game=game)
         try:
@@ -250,5 +274,5 @@ class DockerRunner:
             lines_limit = 'all'
         user_id, image_name = self.get_user_id_and_image_name_from_game_server_name(server_name=server)
         container = self.docker.containers.get(self._format_game_container_name(user_id=user_id, game=image_name))
-        logs = ansi_escape.sub(b'', container.logs(tail=lines_limit)).decode()
-        return logs
+        logs = ansi_escape.sub(b'', container.logs(tail=lines_limit))
+        return _convert_to_string(logs)
