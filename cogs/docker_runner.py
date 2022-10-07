@@ -240,15 +240,15 @@ class DockerRunner:
         for file_browser in file_browsers:
             file_browser.stop()
 
-    def list_server_ports(self, server):
+    def list_server_ports(self, server) -> List[str]:
         user_id, image_name = self.get_user_id_and_image_name_from_game_server_name(server_name=server)
         container = self.docker.containers.get(self._format_game_container_name(user_id=user_id, game=image_name))
         return self.get_ports_from_container(container)
 
-    def get_server_logs(self, server, limit: Optional[int] = None):
+    def get_server_logs(self, server, limit: Optional[int] = None) -> str:
         if limit is None:
             limit = 'all'
         user_id, image_name = self.get_user_id_and_image_name_from_game_server_name(server_name=server)
         container = self.docker.containers.get(self._format_game_container_name(user_id=user_id, game=image_name))
-        logs = container.logs(tail=limit)
+        logs = container.logs(tail=limit).decode()
         return logs
