@@ -68,7 +68,7 @@ class ContainerCommands(commands.Cog):
     @app_commands.describe(command='command to run')
     async def run_command(self, interaction: Interaction, game: str, command: str):
         response = await self.docker.async_run_command(game, command)
-        if response is None:
+        if not response:
             await interaction.response.send_message('No output was found')
             return
         await interaction.response.send_message(response[:MAX_MESSAGE_SIZE])
