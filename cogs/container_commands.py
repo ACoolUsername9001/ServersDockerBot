@@ -70,6 +70,7 @@ class ContainerCommands(commands.Cog):
         response = await self.docker.async_run_command(game, command)
         if response is None:
             await interaction.response.send_message('No output was found')
+            return
         await interaction.response.send_message(response[:MAX_MESSAGE_SIZE])
 
     @app_commands.command(name='get-server-ports', description='Gets the ports the server is listening on')
