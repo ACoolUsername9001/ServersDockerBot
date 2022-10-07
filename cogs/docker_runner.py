@@ -245,10 +245,10 @@ class DockerRunner:
         container = self.docker.containers.get(self._format_game_container_name(user_id=user_id, game=image_name))
         return self.get_ports_from_container(container)
 
-    def get_server_logs(self, server, limit: Optional[int] = None) -> str:
-        if limit is None:
-            limit = 'all'
+    def get_server_logs(self, server, lines_limit: Optional[int] = None) -> str:
+        if lines_limit is None:
+            lines_limit = 'all'
         user_id, image_name = self.get_user_id_and_image_name_from_game_server_name(server_name=server)
         container = self.docker.containers.get(self._format_game_container_name(user_id=user_id, game=image_name))
-        logs = ansi_escape.sub(b'', container.logs(tail=limit)).decode()
+        logs = ansi_escape.sub(b'', container.logs(tail=lines_limit)).decode()
         return logs

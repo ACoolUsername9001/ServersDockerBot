@@ -84,7 +84,11 @@ class ContainerCommands(commands.Cog):
     async def get_server_logs(self, interaction: Interaction, game: str):
         user_id, server_name = self.docker.get_user_id_and_image_name_from_game_server_name(server_name=game)
         prefix = f'***{await self.format_display_name(server_name=server_name, user_id=user_id)} Logs***\n'
-        logs = self.docker.get_server_logs(server=game, limit=MAX_MESSAGE_SIZE-len(prefix))
+        max_log_size = MAX_MESSAGE_SIZE - len(prefix)
+        logs = self.docker.get_server_logs(server=game, lines_limit=max_log_size)
+
+        if len(logs) > max_log_size:
+            logs = logs[-max_log_size:]
         await interaction.response.send_message(prefix+logs, ephemeral=True)
 
     @commands.command(name='sync')
