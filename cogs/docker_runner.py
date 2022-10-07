@@ -250,5 +250,5 @@ class DockerRunner:
             limit = 'all'
         user_id, image_name = self.get_user_id_and_image_name_from_game_server_name(server_name=server)
         container = self.docker.containers.get(self._format_game_container_name(user_id=user_id, game=image_name))
-        logs = container.logs(tail=limit).decode()
+        logs = ansi_escape.sub(b'', container.logs(tail=limit)).decode()
         return logs
