@@ -219,8 +219,6 @@ class DockerRunner:
 
                 r = ansi_escape.sub(b'', f.readline()).decode().replace('\n', '').replace('\r', '')
                 all_output += r
-                if command not in r and r not in ['>']:
-                    return r
                 lines -= 1
             sin.close()
             return all_output
@@ -250,8 +248,6 @@ class DockerRunner:
 
                 r = ansi_escape.sub(b'', f.readline()).decode().replace('\n', '').replace('\r', '')
                 all_output += r
-                if command not in r and r not in ['>']:
-                    return r
                 lines -= 1
                 await asyncio.sleep(0)
         sin.close()
