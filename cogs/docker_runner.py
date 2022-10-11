@@ -206,20 +206,24 @@ class DockerRunner:
         os.write(sin.fileno(), f'{command}\n'.encode('utf-8'))
         all_output = ''
         with open(sin.fileno(), 'rb') as f:
-            read, _, _ = select.select([f], [], [], 0)
-            if f in read:
-                lines = 5
-                while lines > 0:
-                    read, _, _ = select.select([f], [], [], 0)
-                    if f not in read:
-                        break
-                    r = ansi_escape.sub(b'', f.readline()).decode().replace('\n', '').replace('\r', '')
-                    all_output += r
-                    if command not in r and r not in ['>']:
-                        return r
-                    lines -= 1
-        sin.close()
-        return all_output
+            read, _, _ = select.select([f], [], [], 0.1)
+            retries = 5
+            lines = 5
+            while lines > 0:
+                read, _, _ = select.select([f], [], [], 0.1)
+                if f not in read:
+                    if retries >= 0:
+                        retries -= 1
+                        continue
+                    break
+
+                r = ansi_escape.sub(b'', f.readline()).decode().replace('\n', '').replace('\r', '')
+                all_output += r
+                if command not in r and r not in ['>']:
+                    return r
+                lines -= 1
+            sin.close()
+            return all_output
 
     async def async_run_command(self, server, command) -> Optional[str]:
         try:
@@ -233,19 +237,23 @@ class DockerRunner:
         os.write(sin.fileno(), f'{command}\n'.encode('utf-8'))
         all_output = ''
         with open(sin.fileno(), 'rb') as f:
-            read, _, _ = select.select([f], [], [], 0)
-            if f in read:
-                lines = 5
-                while lines > 0:
-                    read, _, _ = select.select([f], [], [], 0)
-                    if f not in read:
-                        break
-                    r = ansi_escape.sub(b'', f.readline()).decode().replace('\n', '').replace('\r', '')
-                    all_output += r
-                    if command not in r and r not in ['>']:
-                        return r
-                    lines -= 1
-                    await asyncio.sleep(0)
+            read, _, _ = select.select([f], [], [], 0.1)
+            retries = 5
+            lines = 5
+            while lines > 0:
+                read, _, _ = select.select([f], [], [], 0.1)
+                if f not in read:
+                    if retries >= 0:
+                        retries -= 1
+                        continue
+                    break
+
+                r = ansi_escape.sub(b'', f.readline()).decode().replace('\n', '').replace('\r', '')
+                all_output += r
+                if command not in r and r not in ['>']:
+                    return r
+                lines -= 1
+                await asyncio.sleep(0)
         sin.close()
         return all_output
 
