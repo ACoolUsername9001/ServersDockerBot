@@ -208,7 +208,7 @@ class DockerRunner:
         with open(sin.fileno(), 'rb') as f:
             read, _, _ = select.select([f], [], [], 0.1)
             retries = 5
-            lines = 5
+            lines = 20
             while lines > 0:
                 read, _, _ = select.select([f], [], [], 0.1)
                 if f not in read:
