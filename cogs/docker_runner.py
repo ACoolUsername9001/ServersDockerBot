@@ -217,41 +217,11 @@ class DockerRunner:
                         continue
                     break
 
-                r = ansi_escape.sub(b'', f.readline()).decode().replace('\n', '').replace('\r', '')
-                all_output += r
+                r = ansi_escape.sub(b'', f.readline()).decode().replace('\r', '')
+                all_output += f'{r}\n'
                 lines -= 1
             sin.close()
             return all_output
-
-    async def async_run_command(self, server, command) -> Optional[str]:
-        try:
-            user_id, image_name = self.get_user_id_and_image_name_from_game_server_name(server_name=server)
-            container = self.docker.containers.get(self._format_game_container_name(user_id=user_id, game=image_name))
-        except Exception as e:
-            raise ServerNotRunning(e)
-
-        sin = container.attach_socket(params={'stdin': True, 'stream': True, 'stdout': True, 'stderr': True})
-
-        os.write(sin.fileno(), f'{command}\n'.encode('utf-8'))
-        all_output = ''
-        with open(sin.fileno(), 'rb') as f:
-            read, _, _ = select.select([f], [], [], 0.1)
-            retries = 5
-            lines = 5
-            while lines > 0:
-                read, _, _ = select.select([f], [], [], 0.1)
-                if f not in read:
-                    if retries >= 0:
-                        retries -= 1
-                        continue
-                    break
-
-                r = ansi_escape.sub(b'', f.readline()).decode().replace('\n', '').replace('\r', '')
-                all_output += r
-                lines -= 1
-                await asyncio.sleep(0)
-        sin.close()
-        return all_output
 
     def delete_game_server(self, user_id, game):
         server = self._format_game_container_name(user_id=user_id, game=game)
