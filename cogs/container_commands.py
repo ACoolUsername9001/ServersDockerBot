@@ -48,7 +48,7 @@ class ContainerCommands(commands.Cog):
         available_ports = self.docker.start_file_browser(user_id=user_id, server=game, hashed_password=hashed_password)
         available_access_points = {f'http://{self._main_domain}:{port}/' for port in available_ports}
 
-        await interaction.response.send_message(f'Opened file browser on {", ".join(available_access_points)}, {password = }', ephemeral=True)
+        await interaction.response.send_message(f'Opened file browser on {", ".join(available_access_points)}, Password: `{password}`', ephemeral=True)
 
     @app_commands.command(name='stop-browsing-files', description='Stops the file browser')
     @app_commands.checks.has_permissions(administrator=True)
