@@ -46,7 +46,7 @@ class ContainerCommands(commands.Cog):
         user_id = interaction.user.id
         alphabet = string.ascii_letters + string.digits + string.punctuation
         password = ''.join([secrets.choice(alphabet) for _ in range(12)])
-        hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+        hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
         available_ports = self.docker.start_file_browser(user_id=user_id, server=game, hashed_password=hashed_password)
         available_access_points = {f'http://{self._main_domain}:{port}/' for port in available_ports}
