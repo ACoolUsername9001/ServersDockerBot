@@ -49,7 +49,7 @@ class ContainerCommands(commands.Cog):
         hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
         available_ports = self.docker.start_file_browser(user_id=user_id, server=game, hashed_password=hashed_password)
-        available_access_points = {f'http://{self._main_domain}:{port}/' for port in available_ports}
+        available_access_points = {f'http://{self._main_domain}:{port.split("/")[0]}/' for port in available_ports}
 
         await interaction.response.send_message(f'Opened file browser on {", ".join(available_access_points)}, Password: `{password}`', ephemeral=True)
 
