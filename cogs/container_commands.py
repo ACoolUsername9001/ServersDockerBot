@@ -39,7 +39,9 @@ class ContainerCommands(commands.Cog):
     async def start_browsing(self, interaction: Interaction, game: str):
         user_id = interaction.user.id
         available_ports = self.docker.start_file_browser(user_id=user_id, server=game)
-        await interaction.response.send_message(f'Opened file browser on ports {",".join(available_ports)}', ephemeral=True)
+        available_access_points = {f'{self._main_domain}:{port}' for port in available_ports}
+
+        await interaction.response.send_message(f'Opened file browser on {", ".join(available_access_points)}', ephemeral=True)
 
     @app_commands.command(name='stop-browsing-files', description='Stops the file browser')
     @app_commands.checks.has_permissions(administrator=True)
@@ -78,8 +80,9 @@ class ContainerCommands(commands.Cog):
     @app_commands.guilds(1013092707494809700)
     async def get_server_ports(self, interaction: Interaction, game: str):
         ports = self.docker.list_server_ports(server=game)
+        available_access_points = {f'{self._main_domain}:{port}' for port in ports}
         user_id, server_name = self.docker.get_user_id_and_image_name_from_game_server_name(server_name=game)
-        await interaction.response.send_message(f'{await self.format_display_name(user_id=user_id, server_name=server_name)} is listening on port(s): {",".join(ports)}')
+        await interaction.response.send_message(f'{await self.format_display_name(user_id=user_id, server_name=server_name)} is listening on port(s): {", ".join(available_access_points)}')
 
     @app_commands.command(name='get-server-logs', description='Gets the logs of a given server')
     @app_commands.checks.has_permissions(administrator=True)
