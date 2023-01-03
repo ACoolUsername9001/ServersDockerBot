@@ -4,7 +4,6 @@ import discord
 from discord import app_commands, Interaction
 from discord.app_commands import Choice
 from discord.ext import commands
-import chardet
 from cogs.docker_runner import DockerRunner
 
 MAX_MESSAGE_SIZE = 2000
@@ -12,11 +11,12 @@ MAX_MESSAGE_SIZE = 2000
 
 class ContainerCommands(commands.Cog):
 
-    def __init__(self, bot: commands.Bot, container_runner: DockerRunner = None, **kwargs):
+    def __init__(self, bot: commands.Bot, container_runner: DockerRunner = None, main_domain: Optional[str] = None, **kwargs):
         if not container_runner:
             container_runner = DockerRunner()
         self.docker = container_runner
         self.bot = bot
+        self._main_domain = main_domain
         super().__init__(**kwargs)
 
     @app_commands.command(name='create', description='This will create a new minecraft server')
@@ -111,8 +111,10 @@ class ContainerCommands(commands.Cog):
             ports = None
 
         available_ports = self.docker.start_game_server(game=game, ports=ports, command_parameters=command_parameters)
+        available_access_points = {f'{self._main_domain}:{port}' for port in available_ports}
+
         user_id, server = self.docker.get_user_id_and_image_name_from_game_server_name(game)
-        await interaction.response.send_message(f'Starting {await self.format_display_name(user_id=user_id, server_name=server)} on port(s): {",".join(available_ports)}')
+        await interaction.response.send_message(f'Starting {await self.format_display_name(user_id=user_id, server_name=server)} on port(s): {", ".join(available_access_points)}')
 
     @create.autocomplete('game')
     async def auto_complete_all_images(self, interaction: Interaction, current: str):
@@ -166,5 +168,5 @@ class ContainerCommands(commands.Cog):
         return choices
 
 
-async def setup(bot: commands.Bot):
-    await bot.add_cog(ContainerCommands(bot=bot))
+async def setup(bot: commands.Bot, main_domain: str):
+    await bot.add_cog(ContainerCommands(bot=bot, main_domain=main_domain))

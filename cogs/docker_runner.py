@@ -73,7 +73,7 @@ class DockerRunner:
 
     def list_game_ports(self, tag) -> list[str]:
         image = self.docker.images.get(self._format_image_name(tag=tag))
-        ports = list(image.attrs.get('Config', {}).get('ExposedPorts', {}).keys())
+        ports = list(image.attrs.get('Config', {}).get('ExposedPorts', {}).settings())
         return ports
 
     def _format_game_container_name(self, user_id=None, game=None) -> str:
