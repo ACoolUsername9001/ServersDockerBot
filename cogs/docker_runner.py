@@ -246,11 +246,11 @@ class DockerRunner:
 
         volume.remove(force=True)
 
-    def start_file_browser(self, user_id, server, hashed_password=None) -> List[str]:
-        if hashed_password is None:
-            hashed_password = '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918'
+    def start_file_browser(self, user_id, server, password=None) -> List[str]:
+        if password is None:
+            password = '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918'
 
-        filebrowser_command = f'-r /tmp/data --password {hashed_password}'
+        filebrowser_command = f'-r /tmp/data --password {password}'
 
         container_name = self._format_game_container_name(user_id=user_id, game=server)
         mounts = [Mount(source=container_name, target='/tmp/data', type='volume')]

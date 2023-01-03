@@ -43,9 +43,8 @@ class ContainerCommands(commands.Cog):
         user_id = interaction.user.id
         alphabet = string.ascii_letters + string.digits + string.punctuation
         password = ''.join([secrets.choice(alphabet) for _ in range(12)])
-        hashed_password = sha256(password.encode()).hexdigest()
 
-        available_ports = self.docker.start_file_browser(user_id=user_id, server=game, hashed_password=hashed_password)
+        available_ports = self.docker.start_file_browser(user_id=user_id, server=game, password=password)
         available_access_points = {f'http://{self._main_domain}:{port}/' for port in available_ports}
 
         await interaction.response.send_message(f'Opened file browser on {", ".join(available_access_points)}, Password: `{password}`', ephemeral=True)
