@@ -2,6 +2,8 @@ import asyncio
 import os
 import re
 import time
+from hashlib import sha256
+
 import chardet
 import docker
 import select
@@ -242,13 +244,22 @@ class DockerRunner:
 
         volume.remove(force=True)
 
-    def start_file_browser(self, user_id, server) -> List[str]:
+    def start_file_browser(self, user_id, server, password=None) -> List[str]:
+        if password is None:
+            password = 'admin'
+        hashed_pass = sha256(password).hexdigest()
+
         container_name = self._format_game_container_name(user_id=user_id, game=server)
         mounts = [Mount(source=container_name, target='/tmp/data', type='volume')]
         file_browser_name = self._format_file_browser_container_name(user_id=user_id)
         if len(self.list_file_browser_names(user_id=user_id)) > 1:
             raise ServerAlreadyRunning()
-        container = self.docker.containers.create(image=self._filebrowser_image, name=file_browser_name, auto_remove=True, command='-r /tmp/data', mounts=mounts, ports={'80/tcp': None})
+        container = self.docker.containers.create(image=self._filebrowser_image,
+                                                  name=file_browser_name,
+                                                  auto_remove=True,
+                                                  command=f'-r /tmp/data --password {hashed_pass}',
+                                                  mounts=mounts,
+                                                  ports={'80/tcp': None})
         container.start()
         time.sleep(0.01)
         container = self.docker.containers.get(container_id=container.id)
