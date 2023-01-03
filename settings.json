@@ -1,4 +1,6 @@
 {
   "token": "DISCORD_API_TOKEN",
-  "domain": "DOMAIN_SERVER_RUNS_ON"
+  "domain": "DOMAIN_SERVER_RUNS_ON",
+  "domain_cert_path": "DOMAIN_CERTIFICATE_PATH",
+  "domain_key_path": "DOMAIN_KEY_PATH"
 }

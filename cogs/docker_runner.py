@@ -1,8 +1,6 @@
-import asyncio
 import os
 import re
 import time
-from hashlib import sha256
 
 import chardet
 import docker
@@ -51,7 +49,9 @@ class DockerRunner:
                  games_repository: str = GAMES_REPOSITORY,
                  games_prefix: str = GAMES_REPOSITORY,
                  filebrowser_prefix: str = FILE_BROWSER_PREFIX,
-                 filebrowser_repository: str = FILE_BROWSER_IMAGE):
+                 filebrowser_repository: str = FILE_BROWSER_IMAGE,
+                 cert_path: Optional[str] = None,
+                 key_path: Optional[str] = None):
         if not docker_client:
             docker_client = docker.from_env()
         self._games_repository = games_repository
@@ -60,6 +60,8 @@ class DockerRunner:
         self.docker = docker_client
         self.docker.images.pull(repository=filebrowser_repository)
         self._filebrowser_image = filebrowser_repository
+        self._cert_path = cert_path
+        self._key_path = key_path
 
     @staticmethod
     def get_user_id_and_image_name_from_game_server_name(server_name):
@@ -248,15 +250,25 @@ class DockerRunner:
         if hashed_password is None:
             hashed_password = '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918'
 
+        filebrowser_command = f'-r /tmp/data --password {hashed_password}'
+
         container_name = self._format_game_container_name(user_id=user_id, game=server)
         mounts = [Mount(source=container_name, target='/tmp/data', type='volume')]
+
+        if self._cert_path:
+            mounts.append(Mount(source=self._cert_path, target='/tmp/cert'))
+            filebrowser_command += ' --cert /tmp/cert'
+        if self._key_path:
+            mounts.append(Mount(source=self._key_path, target='/tmp/key'))
+            filebrowser_command += ' --key /tmp/key'
+
         file_browser_name = self._format_file_browser_container_name(user_id=user_id)
         if len(self.list_file_browser_names(user_id=user_id)) > 1:
             raise ServerAlreadyRunning()
         container = self.docker.containers.create(image=self._filebrowser_image,
                                                   name=file_browser_name,
                                                   auto_remove=True,
-                                                  command=f'-r /tmp/data --password {hashed_password}',
+                                                  command=filebrowser_command,
                                                   mounts=mounts,
                                                   ports={'80/tcp': None})
         container.start()

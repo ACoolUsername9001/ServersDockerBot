@@ -178,5 +178,6 @@ class ContainerCommands(commands.Cog):
         return choices
 
 
-async def setup(bot: commands.Bot, main_domain: str):
-    await bot.add_cog(ContainerCommands(bot=bot, main_domain=main_domain))
+async def setup(bot: commands.Bot, domain: str, cert_path: str, key_path: str):
+
+    await bot.add_cog(ContainerCommands(bot=bot, main_domain=domain, container_runner=DockerRunner(cert_path=cert_path, key_path=key_path)))
