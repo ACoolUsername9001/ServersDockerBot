@@ -257,7 +257,9 @@ class DockerRunner:
         if hashed_password is not None:
             filebrowser_command += f' --username admin --password "{hashed_password}"'
 
-        mounts = [Mount(source=server, target='/tmp/data', type='volume')]
+        user_id, game = self.get_user_id_and_image_name_from_game_server_name(server_name=server)
+
+        mounts = [Mount(source=self._format_game_container_name(user_id=user_id, game=game), target='/tmp/data', type='volume')]
 
         if self._cert_path:
             mounts.append(Mount(source=self._cert_path, target='/tmp/cert'))
