@@ -69,11 +69,17 @@ class DockerRunner:
         groups = match.groupdict()
         return groups.get('userid'), groups.get('server')
 
+    def get_user_id_and_image_name_from_file_browser_name(self, server_name):
+        server_name = self._hide_file_browser_prefix(server_name)
+        match = re.match(rf'(?P<userid>\w+)-(?P<server>.+)', server_name)
+        groups = match.groupdict()
+        return groups.get('userid'), groups.get('server')
+
     def _hide_games_prefix(self, name: str):
         return name[len(self._games_prefix)+1:]
 
-    def _hide_file_browser_prefix(self, name):
-        return name[len(self._filebrowser_prefix)+1:]
+    def _hide_file_browser_prefix(self, user_id, name):
+        return name[len(self._filebrowser_prefix)+1+len(user_id)+1:]
 
     def list_game_ports(self, tag) -> list[str]:
         image = self.docker.images.get(self._format_image_name(tag=tag))
@@ -117,7 +123,7 @@ class DockerRunner:
         return [server for server in servers if server not in running_servers]
 
     def list_file_browser_names(self, user_id) -> List[str]:
-        return [self._hide_file_browser_prefix(c.name) for c in self._list_file_browsers(user_id=user_id)]
+        return [self._hide_file_browser_prefix(user_id, c.name) for c in self._list_file_browsers(user_id=user_id)]
 
     def list_game_names(self) -> List[str]:
         tags = []
@@ -246,7 +252,7 @@ class DockerRunner:
 
         volume.remove(force=True)
 
-    def start_file_browser(self, user_id, server, hashed_password=None) -> List[str]:
+    def start_file_browser(self, user_id, server, executor_id, hashed_password=None) -> List[str]:
         filebrowser_command = f'-r /tmp/data'
         if hashed_password is not None:
             filebrowser_command += f' --username admin --password "{hashed_password}"'
@@ -261,7 +267,7 @@ class DockerRunner:
             mounts.append(Mount(source=self._key_path, target='/tmp/key'))
             filebrowser_command += ' --key /tmp/key'
 
-        file_browser_name = self._format_file_browser_container_name(user_id=user_id, server=server)
+        file_browser_name = self._format_file_browser_container_name(user_id=executor_id, server=server)
         if len(self.list_file_browser_names(user_id=user_id)) > 1:
             raise ServerAlreadyRunning()
         container = self.docker.containers.create(image=self._filebrowser_image,
