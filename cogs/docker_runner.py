@@ -252,7 +252,7 @@ class DockerRunner:
 
         volume.remove(force=True)
 
-    def start_file_browser(self, user_id, server, executor_id, hashed_password=None) -> List[str]:
+    def start_file_browser(self, server, executor_id, hashed_password=None) -> List[str]:
         filebrowser_command = f'-r /tmp/data'
         if hashed_password is not None:
             filebrowser_command += f' --username admin --password "{hashed_password}"'
