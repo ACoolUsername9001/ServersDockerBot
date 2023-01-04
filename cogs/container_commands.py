@@ -158,8 +158,13 @@ class ContainerCommands(commands.Cog):
     @start_browsing.autocomplete('game')
     async def autocomplete_all_containers(self, interaction: Interaction, current: str):
         games = self.docker.list_server_names()
+        file_browsers = self.docker.list_file_browser_names(user_id=interaction.user.id)
+        file_browser_servers = [self.docker.get_user_id_and_image_name_from_file_browser_name(file_browser) for file_browser in file_browsers]
         choices = []
         for game in games:
+            if game in file_browser_servers:
+                continue
+
             user_id, server = self.docker.get_user_id_and_image_name_from_game_server_name(game)
             display_name = await self.format_display_name(user_id=user_id, server_name=server)
             if current.lower() in display_name.lower():
