@@ -145,10 +145,30 @@ class ContainerCommands(commands.Cog):
         return new_container_name
 
     @start_container.autocomplete('game')
+    async def autocomplete_all_stopped_containers(self, interaction: Interaction, current: str):
+        games = self.docker.list_stopped_server_names()
+        choices = []
+        for game in games:
+            user_id, server = self.docker.get_user_id_and_image_name_from_game_server_name(game)
+            display_name = await self.format_display_name(user_id=user_id, server_name=server)
+            if current.lower() in display_name.lower():
+                choices.append(Choice(name=display_name, value=game))
+        return choices
+
     @start_browsing.autocomplete('game')
+    async def autocomplete_all_containers(self, interaction: Interaction, current: str):
+        games = self.docker.list_server_names()
+        choices = []
+        for game in games:
+            user_id, server = self.docker.get_user_id_and_image_name_from_game_server_name(game)
+            display_name = await self.format_display_name(user_id=user_id, server_name=server)
+            if current.lower() in display_name.lower():
+                choices.append(Choice(name=display_name, value=game))
+        return choices
+
     @stop_browsing.autocomplete('game')
     async def autocomplete_all_containers(self, interaction: Interaction, current: str):
-        games = self.docker.list_stopped_server_names()
+        games = self.docker.list_file_browser_names(user_id=interaction.user.id)
         choices = []
         for game in games:
             user_id, server = self.docker.get_user_id_and_image_name_from_game_server_name(game)
