@@ -78,10 +78,8 @@ class DockerRunner:
     def _hide_games_prefix(self, name: str):
         return name[len(self._games_prefix)+1:]
 
-    def _hide_file_browser_prefix(self, user_id=None, name=None):
-        if user_id is None:
-            return name[len(self._filebrowser_prefix) + 1:]
-        return name[len(self._filebrowser_prefix)+1+len(str(user_id))+1:]
+    def _hide_file_browser_prefix(self, name):
+        return name[len(self._filebrowser_prefix) + 1:]
 
     def list_game_ports(self, tag) -> list[str]:
         image = self.docker.images.get(self._format_image_name(tag=tag))
@@ -125,7 +123,7 @@ class DockerRunner:
         return [server for server in servers if server not in running_servers]
 
     def list_file_browser_names(self, user_id) -> List[str]:
-        return [self._hide_file_browser_prefix(user_id, c.name) for c in self._list_file_browsers(user_id=user_id)]
+        return [self._hide_file_browser_prefix(c.name)[len(f'{user_id}-'):] for c in self._list_file_browsers(user_id=user_id)]
 
     def list_game_names(self) -> List[str]:
         tags = []
