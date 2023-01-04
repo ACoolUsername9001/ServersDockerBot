@@ -69,8 +69,8 @@ class DockerRunner:
         groups = match.groupdict()
         return groups.get('userid'), groups.get('server')
 
-    def get_user_id_and_image_name_from_file_browser_name(self, server_name):
-        server_name = self._hide_file_browser_prefix(name=server_name)
+    @staticmethod
+    def get_user_id_and_image_name_from_file_browser_name(server_name):
         match = re.match(rf'(?P<userid>\w+)-(?P<server>.+)', server_name)
         groups = match.groupdict()
         return groups.get('userid'), groups.get('server')
