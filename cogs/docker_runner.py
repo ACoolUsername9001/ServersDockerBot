@@ -87,8 +87,8 @@ class DockerRunner:
             return f'{self._games_prefix}-{user_id}-'
         return f'{self._games_prefix}-{user_id}-{game}'
 
-    def _format_file_browser_container_name(self, user_id) -> str:
-        return f'{self._filebrowser_prefix}-{user_id}'
+    def _format_file_browser_container_name(self, user_id, server: Optional[str] = None) -> str:
+        return f'{self._filebrowser_prefix}-{user_id}-{server if server is not None else ""}'
 
     def _format_image_name(self, tag):
         return f'{self._games_repository}:{tag}'
@@ -99,8 +99,8 @@ class DockerRunner:
     def _list_running_server_containers(self, user_id=None, prefix: Optional[str] = None) -> List[Container]:
         return self.docker.containers.list(filters={'name': self._format_game_container_name(user_id=user_id, game=prefix)})
 
-    def _list_file_browsers(self, user_id) -> List[Container]:
-        return self.docker.containers.list(filters={'name': self._format_file_browser_container_name(user_id=user_id)})
+    def _list_file_browsers(self, user_id, server: Optional[str] = None) -> List[Container]:
+        return self.docker.containers.list(filters={'name': self._format_file_browser_container_name(user_id=user_id, server=server)})
 
     def _list_game_images(self) -> List[Image]:
         return self.docker.images.list(all=True, name=self._games_repository)
@@ -261,7 +261,7 @@ class DockerRunner:
             mounts.append(Mount(source=self._key_path, target='/tmp/key'))
             filebrowser_command += ' --key /tmp/key'
 
-        file_browser_name = self._format_file_browser_container_name(user_id=user_id)
+        file_browser_name = self._format_file_browser_container_name(user_id=user_id, server=server)
         if len(self.list_file_browser_names(user_id=user_id)) > 1:
             raise ServerAlreadyRunning()
         container = self.docker.containers.create(image=self._filebrowser_image,
@@ -276,8 +276,8 @@ class DockerRunner:
         available_ports = self.get_ports_from_container(container)
         return available_ports
 
-    def stop_file_browsing(self, user_id):
-        file_browsers = self._list_file_browsers(user_id=user_id)
+    def stop_file_browsing(self, user_id, server: Optional[str] = None):
+        file_browsers = self._list_file_browsers(user_id=user_id, server=server)
         for file_browser in file_browsers:
             file_browser.stop()
 

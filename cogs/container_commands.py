@@ -57,9 +57,9 @@ class ContainerCommands(commands.Cog):
     @app_commands.command(name='stop-browsing-files', description='Stops the file browser')
     @app_commands.checks.has_permissions(administrator=True)
     @app_commands.guilds(1013092707494809700)
-    async def stop_browsing(self, interaction: Interaction):
+    async def stop_browsing(self, interaction: Interaction, game: Optional[str] = None):
         user_id = interaction.user.id
-        self.docker.stop_file_browsing(user_id=user_id)
+        self.docker.stop_file_browsing(user_id=user_id, server=game)
         await interaction.response.send_message('Stopped file browser', ephemeral=True)
 
     @app_commands.command(name='delete', description='This will create a new minecraft server')
@@ -146,6 +146,7 @@ class ContainerCommands(commands.Cog):
 
     @start_container.autocomplete('game')
     @start_browsing.autocomplete('game')
+    @stop_browsing.autocomplete('game')
     async def autocomplete_all_containers(self, interaction: Interaction, current: str):
         games = self.docker.list_stopped_server_names()
         choices = []
