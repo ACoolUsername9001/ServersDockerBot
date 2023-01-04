@@ -45,6 +45,7 @@ class ContainerCommands(commands.Cog):
     async def start_browsing(self, interaction: Interaction, game: str):
         user_id = interaction.user.id
         alphabet = string.ascii_letters + string.digits + string.punctuation
+        alphabet = ''.join(x for x in alphabet if x is not '`')
         password = ''.join([secrets.choice(alphabet) for _ in range(12)])
         hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
@@ -144,6 +145,7 @@ class ContainerCommands(commands.Cog):
         return new_container_name
 
     @start_container.autocomplete('game')
+    @start_browsing.autocomplete('game')
     async def autocomplete_all_containers(self, interaction: Interaction, current: str):
         games = self.docker.list_stopped_server_names()
         choices = []
@@ -155,7 +157,6 @@ class ContainerCommands(commands.Cog):
         return choices
 
     @delete.autocomplete('game')
-    @start_browsing.autocomplete('game')
     async def autocomplete_user_containers(self, interaction: Interaction, current: str):
         userid = interaction.user.id
         games = self.docker.list_server_names(user_id=userid)
