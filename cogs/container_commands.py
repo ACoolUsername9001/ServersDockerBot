@@ -45,7 +45,7 @@ class ContainerCommands(commands.Cog):
     async def start_browsing(self, interaction: Interaction, game: str):
         user_id = interaction.user.id
         alphabet = string.ascii_letters + string.digits + string.punctuation
-        alphabet = ''.join(x for x in alphabet if x is not '`')
+        alphabet = ''.join(x for x in alphabet if x != '`')
         password = ''.join([secrets.choice(alphabet) for _ in range(12)])
         hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
