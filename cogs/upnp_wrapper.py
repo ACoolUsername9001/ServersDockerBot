@@ -56,7 +56,7 @@ class UPNPWrapper(ContainerRunner):
                     NewProtocol=protocol
                     )
             except Exception as e:
-                logging.error(f'Faield to open {remote_addr}:{remote_port}->{local_addr}:{local_port} {protocol}, {e}', exc_info=True)
+                print(f'Faield to open {remote_addr}:{remote_port}->{local_addr}:{local_port} {protocol}, {e}')
 
     def _remove_port_mapping(self, protocol: Protocol, remote_port: int, remote_addr: str = ''):
         for device in self._devices:
