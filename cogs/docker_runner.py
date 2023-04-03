@@ -43,7 +43,7 @@ class ServerNotRunning(Exception):
     pass
 
 
-class DockerRunner:
+class DockerRunner(ContainerRunner):
 
     def __init__(self, docker_client: Optional[docker.DockerClient] = None,
                  games_repository: str = GAMES_REPOSITORY,
