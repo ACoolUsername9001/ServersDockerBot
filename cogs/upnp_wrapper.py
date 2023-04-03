@@ -68,12 +68,10 @@ class UPNPWrapper(ContainerRunner):
             except Exception as e:
                 logging.error(f'Faield to closed {remote_addr}:{remote_port} {protocol}, {e}', exc_info=True)
 
-    @staticmethod
-    def get_user_id_and_image_name_from_game_server_name(server_name):
+    def get_user_id_and_image_name_from_game_server_name(self, server_name):
         return self._container_runner.get_user_id_and_image_name_from_game_server_name(server_name=server_name)
 
-    @staticmethod
-    def get_user_id_and_image_name_from_file_browser_name(server_name):
+    def get_user_id_and_image_name_from_file_browser_name(self, server_name):
         return self._container_runner.get_user_id_and_image_name_from_file_browser_name(server_name=server_name)
 
     def list_game_ports(self, tag) -> list[str]:
@@ -97,8 +95,7 @@ class UPNPWrapper(ContainerRunner):
     def create_game_server(self, user_id, game: str) -> str:
         return self._container_runner.create_game_server(user_id=user_id, game=game)
 
-    @staticmethod
-    def get_ports_from_container(container) -> List[str]:
+    def get_ports_from_container(self, container) -> List[str]:
         return self._container_runner.get_ports_from_container(container=container)
 
     @_open_ports_decorator
