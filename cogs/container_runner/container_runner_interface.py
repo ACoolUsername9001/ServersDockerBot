@@ -1,4 +1,4 @@
-from typing import Protocol, Optional, List
+from typing import Protocol, Optional, List, Any
 
 
 class ContainerRunner(Protocol):
