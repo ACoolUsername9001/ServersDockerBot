@@ -11,7 +11,7 @@ from discord import app_commands, Interaction
 from discord.app_commands import Choice
 from discord.ext import commands
 from cogs.docker_runner import DockerRunner
-from cogs.container_runner import ContainerRunner
+from cogs.container_runner.container_runner_interface import ContainerRunner
 from cogs.upnp_wrapper import UPNPWrapper
 
 MAX_MESSAGE_SIZE = 2000
