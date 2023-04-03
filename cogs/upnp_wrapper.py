@@ -18,6 +18,15 @@ class UPNPWrapper(ContainerRunner):
         self._container_runner = container_runner
         self._local_addr = self._get_ip()
 
+    @staticmethod
+    def _open_ports_decorator(func):
+        def inner(self, *args, **kwargs):
+            res = func(*args, **kwargs)
+            for port, protocol in (r.split('/') for r in res):
+                self._add_port_mapping(local_addr=self._local_addr, local_port=port, remote_port=port, protocol=protocol)
+            return res
+        return inner
+
     @classmethod
     def _get_ip(cls):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -92,11 +101,9 @@ class UPNPWrapper(ContainerRunner):
     def get_ports_from_container(container) -> List[str]:
         return self._container_runner.get_ports_from_container(container=container)
 
+    @_open_ports_decorator
     def start_game_server(self, game, ports: Optional[List[str]] = None, command_parameters: Optional[str] = None) -> List[str]:
-        res = self._container_runner.start_game_server(game=game, ports=ports, command_parameters=command_parameters)
-        for port, protocol in (r.split('/') for r in res):
-            self._add_port_mapping(local_addr=self._local_addr, local_port=port, remote_port=port, protocol=protocol)
-        return res
+        return self._container_runner.start_game_server(game=game, ports=ports, command_parameters=command_parameters)
 
     def run_command(self, server, command) -> Optional[str]:
         return self._container_runner.run_command(server=server, command=command)
@@ -104,6 +111,7 @@ class UPNPWrapper(ContainerRunner):
     def delete_game_server(self, user_id, game):
         return self._container_runner.delete_game_server(user_id=user_id, game=game)
 
+    @_open_ports_decorator
     def start_file_browser(self, server, executor_id, hashed_password=None) -> List[str]:
         return self._container_runner.start_file_browser(server=server, executor_id=executor_id)
 
