@@ -41,7 +41,7 @@ class UPNPWrapper(ContainerRunner):
             s.close()
         return IP
     
-    def _add_port_mapping(protocol: Protocol, local_addr: str, local_port: int, remote_addr: str = '', remote_port: Optional[int] = None):
+    def _add_port_mapping(self, protocol: Protocol, local_addr: str, local_port: int, remote_addr: str = '', remote_port: Optional[int] = None):
         for device in self._devices:
             try:
                 device.find_action('AddPortMapping')(
@@ -57,7 +57,7 @@ class UPNPWrapper(ContainerRunner):
             except Exception as e:
                 logging.error(f'Faield to open {remote_addr}:{remote_port}->{local_addr}:{local_port} {protocol}, {e}', exc_info=True)
 
-    def _remove_port_mapping(protocol: Protocol, remote_port: int, remote_addr: str = ''):
+    def _remove_port_mapping(self, protocol: Protocol, remote_port: int, remote_addr: str = ''):
         for device in self._devices:
             try:
                 device.find_action('DeletePortMapping')(
