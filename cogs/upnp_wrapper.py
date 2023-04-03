@@ -14,10 +14,10 @@ class Protocol(str, Enum):
 class UPNPWrapper(ContainerRunner):
 
     def __init__(self, container_runner: ContainerRunner):
-        self._devices = [device for device in upnpclient.discover() if 'AddPortMapping' in device.actions]
+        self._devices = [device for device in upnpclient.discover() if 'AddPortMapping' in (action.name for action in device.actions)]
         self._container_runner = container_runner
         self._local_addr = self._get_ip()
-        logging.info(f'Local IP Address: {self._local_addr}')
+        print(f'Local IP Address: {self._local_addr}')
 
     @staticmethod
     def _open_ports_decorator(func):
