@@ -21,7 +21,7 @@ class UPNPWrapper(ContainerRunner):
     @staticmethod
     def _open_ports_decorator(func):
         def inner(self, *args, **kwargs):
-            res = func(*args, **kwargs)
+            res = func(self, *args, **kwargs)
             for port, protocol in (r.split('/') for r in res):
                 self._add_port_mapping(local_addr=self._local_addr, local_port=port, remote_port=port, protocol=protocol)
             return res
