@@ -111,7 +111,7 @@ class UPNPWrapper(ContainerRunner):
 
     @_open_ports_decorator
     def start_file_browser(self, server, executor_id, hashed_password=None) -> List[str]:
-        return self._container_runner.start_file_browser(server=server, executor_id=executor_id)
+        return self._container_runner.start_file_browser(server=server, executor_id=executor_id, hashed_password=hashed_password)
 
     def stop_file_browsing(self, user_id, server: Optional[str] = None):
         return self._container_runner.stop_file_browsing(user_id=user_id, server=server)
