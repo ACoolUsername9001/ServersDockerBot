@@ -70,7 +70,7 @@ class DockerRunner(ContainerRunner):
 
     @staticmethod
     def get_user_id_and_image_name_from_game_server_name(server_name) -> tuple[Optional[str], Optional[str], Optional[str]]:
-        match = re.match(r'(?P<userid>\w+)-(?P<server>.+)-?(?P<id>\d+)?', server_name)
+        match = re.match(r'(?P<userid>\w+)-?(?P<id>\d+)?-(?P<server>.+)', server_name)
         groups = match.groupdict()
         return groups.get('userid'), groups.get('server'), groups.get('id')
 
@@ -98,7 +98,7 @@ class DockerRunner(ContainerRunner):
                     return f'{self._games_prefix}-'
                 return f'{self._games_prefix}-{user_id}-'
             return f'{self._games_prefix}-{user_id}-{game}'
-        return f'{self._games_prefix}-{user_id}-{game}-{id_}'
+        return f'{self._games_prefix}-{user_id}-{id_}-{game}'
 
     def _format_file_browser_container_name(self, user_id, server: Optional[str] = None) -> str:
         return f'{self._filebrowser_prefix}-{user_id}-{server if server is not None else ""}'
