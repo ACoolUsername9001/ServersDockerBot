@@ -45,7 +45,7 @@ class ContainerRunner(Protocol):
     def delete_game_server(self, user_id, game):
         ...
 
-    def start_file_browser(self, server, executor_id, hashed_...word=None) -> List[str]:
+    def start_file_browser(self, server, executor_id, hashed_password=None) -> List[str]:
         ...
 
     def stop_file_browsing(self, user_id, server: Optional[str] = None):
