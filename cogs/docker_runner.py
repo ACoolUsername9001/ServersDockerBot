@@ -126,7 +126,7 @@ class DockerRunner(ContainerRunner):
 
     def list_stopped_server_names(self, user_id: Optional[Any] = None, prefix: Optional[str] = None) -> List[str]:
         servers = self.list_server_names(user_id=user_id, prefix=prefix)
-        runninga_servers = self.list_running_server_names(user_id=user_id, prefix=prefix)
+        running_servers = self.list_running_server_names(user_id=user_id, prefix=prefix)
         return [server for server in servers if server not in running_servers]
 
     def list_file_browser_names(self, user_id) -> List[str]:
@@ -208,6 +208,7 @@ class DockerRunner(ContainerRunner):
             mount = [Mount(target=working_dir, source=server_name, type='volume')]
         else:
             mount = None
+
         if ports is None:
             ports = self.list_game_ports(image_name)
 
