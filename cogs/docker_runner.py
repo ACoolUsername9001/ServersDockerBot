@@ -132,13 +132,13 @@ class DockerRunner(ContainerRunner):
             tags.extend(x.split(':')[1] for x in image.tags)
         return tags
 
-    def create_game_server(self, user_id, game: str) -> str:
+    def create_game_server(self, user_id, game: str, custom_name: Optional[str] = None) -> str:
         game_images = self.list_game_names()
 
         if game not in game_images:
             raise GameNotFound(f'Game {game} was not found')
 
-        return self._hide_games_prefix(self.docker.volumes.create(name=self._format_game_container_name(user_id=user_id, game=game)).name)
+        return self._hide_games_prefix(self.docker.volumes.create(name=self._format_game_container_name(user_id=user_id, game=custom_name if custom_name is not None else game)).name)
 
     def _get_server_image_working_dir(self, image_tag):
         image_name = self._format_image_name(image_tag)
