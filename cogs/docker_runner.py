@@ -44,6 +44,10 @@ class ServerNotRunning(Exception):
     pass
 
 
+class MaxServersReached(Exception):
+    pass
+
+
 class DockerRunner(ContainerRunner):
 
     def __init__(self, docker_client: Optional[docker.DockerClient] = None,
@@ -65,10 +69,10 @@ class DockerRunner(ContainerRunner):
         self._key_path = key_path
 
     @staticmethod
-    def get_user_id_and_image_name_from_game_server_name(server_name):
-        match = re.match(r'(?P<userid>\w+)-(?P<server>.+)', server_name)
+    def get_user_id_and_image_name_from_game_server_name(server_name) -> tuple[Optional[str], Optional[str], Optional[str]]:
+        match = re.match(r'(?P<userid>\w+)-(?P<server>.+)-?(?P<id>\d+)?', server_name)
         groups = match.groupdict()
-        return groups.get('userid'), groups.get('server')
+        return groups.get('userid'), groups.get('server'), groups.get('id')
 
     @staticmethod
     def get_user_id_and_image_name_from_file_browser_name(server_name):
@@ -87,12 +91,14 @@ class DockerRunner(ContainerRunner):
         ports = list(image.attrs.get('Config', {}).get('ExposedPorts', {}))
         return ports
 
-    def _format_game_container_name(self, user_id=None, game=None) -> str:
-        if not game:
-            if not user_id:
-                return f'{self._games_prefix}-'
-            return f'{self._games_prefix}-{user_id}-'
-        return f'{self._games_prefix}-{user_id}-{game}'
+    def _format_game_container_name(self, user_id=None, game=None, id_=None) -> str:
+        if not id_:
+            if not game:
+                if not user_id:
+                    return f'{self._games_prefix}-'
+                return f'{self._games_prefix}-{user_id}-'
+            return f'{self._games_prefix}-{user_id}-{game}'
+        return f'{self._games_prefix}-{user_id}-{game}-{id_}'
 
     def _format_file_browser_container_name(self, user_id, server: Optional[str] = None) -> str:
         return f'{self._filebrowser_prefix}-{user_id}-{server if server is not None else ""}'
@@ -120,7 +126,7 @@ class DockerRunner(ContainerRunner):
 
     def list_stopped_server_names(self, user_id: Optional[Any] = None, prefix: Optional[str] = None) -> List[str]:
         servers = self.list_server_names(user_id=user_id, prefix=prefix)
-        running_servers = self.list_running_server_names(user_id=user_id, prefix=prefix)
+        runninga_servers = self.list_running_server_names(user_id=user_id, prefix=prefix)
         return [server for server in servers if server not in running_servers]
 
     def list_file_browser_names(self, user_id) -> List[str]:
@@ -137,8 +143,23 @@ class DockerRunner(ContainerRunner):
 
         if game not in game_images:
             raise GameNotFound(f'Game {game} was not found')
+        
+        existing_servers = self.list_server_names(user_id=user_id, prefix=game)
+        server_id: Optional[int] = None
+        for i in range(5):
+            free = True
+            for server_name in existing_servers:
+                user_id, image_name, id_ = self.get_user_id_and_image_name_from_game_server_name(server_name=server_name)
+                if id_ == i:
+                    free = False
+                    break
+            if free:
+                server_id = i
+        
+        if server_id is None:
+            raise MaxServersReached()
 
-        return self._hide_games_prefix(self.docker.volumes.create(name=self._format_game_container_name(user_id=user_id, game=game)).name)
+        return self._hide_games_prefix(self.docker.volumes.create(name=self._format_game_container_name(user_id=user_id, game=game, id_=server_id)).name)
 
     def _get_server_image_working_dir(self, image_tag):
         image_name = self._format_image_name(image_tag)
@@ -169,7 +190,7 @@ class DockerRunner(ContainerRunner):
         return available_ports
 
     def start_game_server(self, game, ports: Optional[List[str]] = None, command_parameters: Optional[str] = None) -> List[str]:
-        user_id, image_name = self.get_user_id_and_image_name_from_game_server_name(game)
+        user_id, image_name, id_ = self.get_user_id_and_image_name_from_game_server_name(game)
         if image_name not in self.list_game_names():
             raise GameNotFound(f'Game {image_name} was not found')
 
@@ -182,7 +203,7 @@ class DockerRunner(ContainerRunner):
             raise ServerAlreadyRunning(f'Server of game {game} is already running')
 
         working_dir = self._get_server_image_working_dir(image_name)
-        server_name = self._format_game_container_name(user_id=user_id, game=image_name)
+        server_name = self._format_game_container_name(user_id=user_id, game=image_name, id_=id_)
         if working_dir:
             mount = [Mount(target=working_dir, source=server_name, type='volume')]
         else:
@@ -207,7 +228,7 @@ class DockerRunner(ContainerRunner):
 
     def run_command(self, server, command) -> Optional[str]:
         try:
-            user_id, image_name = self.get_user_id_and_image_name_from_game_server_name(server_name=server)
+          user_id, image_name, id_ = self.get_user_id_and_image_name_from_game_server_name(server_name=server)
             container = self.docker.containers.get(self._format_game_container_name(user_id=user_id, game=image_name))
         except Exception as e:
             raise ServerNotRunning(e)
@@ -258,7 +279,7 @@ class DockerRunner(ContainerRunner):
         if hashed_password is not None:
             filebrowser_command += f' --username admin --password "{hashed_password}"'
 
-        user_id, game = self.get_user_id_and_image_name_from_game_server_name(server_name=server)
+      user_id, game, id_ = self.get_user_id_and_image_name_from_game_server_name(server_name=server)
 
         mounts = [Mount(source=self._format_game_container_name(user_id=user_id, game=game), target='/tmp/data', type='volume')]
 
@@ -290,14 +311,14 @@ class DockerRunner(ContainerRunner):
             file_browser.stop()
 
     def list_server_ports(self, server) -> List[str]:
-        user_id, image_name = self.get_user_id_and_image_name_from_game_server_name(server_name=server)
+      user_id, image_name, id_ = self.get_user_id_and_image_name_from_game_server_name(server_name=server)
         container = self.docker.containers.get(self._format_game_container_name(user_id=user_id, game=image_name))
         return self.get_ports_from_container(container)
 
     def get_server_logs(self, server, lines_limit: Optional[int] = None) -> str:
         if lines_limit is None:
             lines_limit = 'all'
-        user_id, image_name = self.get_user_id_and_image_name_from_game_server_name(server_name=server)
+      user_id, image_name, id_ = self.get_user_id_and_image_name_from_game_server_name(server_name=server)
         container = self.docker.containers.get(self._format_game_container_name(user_id=user_id, game=image_name))
         logs = ansi_escape.sub(b'', container.logs(tail=lines_limit))
         return _convert_to_string(logs)

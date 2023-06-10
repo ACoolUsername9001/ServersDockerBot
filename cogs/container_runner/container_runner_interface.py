@@ -4,7 +4,7 @@ from typing import Protocol, Optional, List, Any
 class ContainerRunner(Protocol):
 
     @staticmethod
-    def get_user_id_and_image_name_from_game_server_name(server_name) -> tuple[Optional[str], Optional[str]]:
+    def get_user_id_and_image_name_from_game_server_name(server_name) -> tuple[Optional[str], Optional[str], Optional[str]]:
         ...
 
     @staticmethod

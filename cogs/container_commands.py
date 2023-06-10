@@ -20,7 +20,7 @@ MAX_MESSAGE_SIZE = 2000
 
 class ContainerCommands(commands.Cog):
 
-    def __init__(self, bot: commands.Bot, container_runner: ContainerRunner = None, main_domain: Optional[str] = None, **kwargs):
+    def __init__(self, bot: commands.Bot, container_runner: Optional[ContainerRunner] = None, main_domain: Optional[str] = None, **kwargs):
         if not container_runner:
             container_runner = DockerRunner()
         self.container_runner = container_runner
@@ -36,7 +36,7 @@ class ContainerCommands(commands.Cog):
         userid = interaction.user.id
         try:
             server_id = self.container_runner.create_game_server(user_id=userid, game=game)
-            user_id, server_name = self.container_runner.get_user_id_and_image_name_from_game_server_name(server_name=server_id)
+            user_id, server_name, id_ = self.container_runner.get_user_id_and_image_name_from_game_server_name(server_name=server_id)
             await interaction.response.send_message(f'Created server {server_name.replace("-", " ").title()}', ephemeral=True)
         except Exception as e:
             logging.error(f'Failed to create container: {e}', exc_info=True)
@@ -96,14 +96,14 @@ class ContainerCommands(commands.Cog):
     async def get_server_ports(self, interaction: Interaction, game: str):
         ports = self.container_runner.list_server_ports(server=game)
         available_access_points = {f'{self._main_domain}:{port}' for port in ports}
-        user_id, server_name = self.container_runner.get_user_id_and_image_name_from_game_server_name(server_name=game)
+        user_id, server_name, id_ = self.container_runner.get_user_id_and_image_name_from_game_server_name(server_name=game)
         await interaction.response.send_message(f'{await self.format_display_name(user_id=user_id, server_name=server_name)} is listening on port(s): {", ".join(available_access_points)}')
 
     @app_commands.command(name='get-server-logs', description='Gets the logs of a given server')
     @app_commands.checks.has_permissions(administrator=True)
     @app_commands.guilds(1013092707494809700)
     async def get_server_logs(self, interaction: Interaction, game: str):
-        user_id, server_name = self.container_runner.get_user_id_and_image_name_from_game_server_name(server_name=game)
+        user_id, server_name, id_ = self.container_runner.get_user_id_and_image_name_from_game_server_name(server_name=game)
         prefix = f'***{await self.format_display_name(server_name=server_name, user_id=user_id)} Logs***\n'
         max_log_size = MAX_MESSAGE_SIZE - len(prefix)
         logs = self.container_runner.get_server_logs(server=game, lines_limit=max_log_size)
@@ -131,7 +131,7 @@ class ContainerCommands(commands.Cog):
         available_ports = self.container_runner.start_game_server(game=game, ports=ports, command_parameters=command_parameters)
         available_access_points = {f'{self._main_domain}:{port}' for port in available_ports}
 
-        user_id, server = self.container_runner.get_user_id_and_image_name_from_game_server_name(game)
+        user_id, server, id_ = self.container_runner.get_user_id_and_image_name_from_game_server_name(game)
         await interaction.response.send_message(f'Starting {await self.format_display_name(user_id=user_id, server_name=server)} on port(s): {", ".join(available_access_points)}')
 
     @create.autocomplete('game')
@@ -153,7 +153,7 @@ class ContainerCommands(commands.Cog):
         games = self.container_runner.list_stopped_server_names()
         choices = []
         for game in games:
-            user_id, server = self.container_runner.get_user_id_and_image_name_from_game_server_name(game)
+          user_id, server, id_ = self.container_runner.get_user_id_and_image_name_from_game_server_name(game)
             display_name = await self.format_display_name(user_id=user_id, server_name=server)
             if current.lower() in display_name.lower():
                 choices.append(Choice(name=display_name, value=game))
@@ -168,7 +168,7 @@ class ContainerCommands(commands.Cog):
             if game in file_browsers:
                 continue
 
-            user_id, server = self.container_runner.get_user_id_and_image_name_from_game_server_name(game)
+          user_id, server, id_ = self.container_runner.get_user_id_and_image_name_from_game_server_name(game)
             display_name = await self.format_display_name(user_id=user_id, server_name=server)
             if current.lower() in display_name.lower():
                 choices.append(Choice(name=display_name, value=game))
@@ -179,7 +179,7 @@ class ContainerCommands(commands.Cog):
         file_browsers = self.container_runner.list_file_browser_names(user_id=interaction.user.id)
         choices = []
         for game in file_browsers:
-            user_id, server = self.container_runner.get_user_id_and_image_name_from_file_browser_name(game)
+          user_id, server, id_ = self.container_runner.get_user_id_and_image_name_from_file_browser_name(game)
             display_name = await self.format_display_name(user_id=user_id, server_name=server)
             if current.lower() in display_name.lower():
                 choices.append(Choice(name=display_name, value=game))
@@ -191,7 +191,7 @@ class ContainerCommands(commands.Cog):
         games = self.container_runner.list_server_names(user_id=userid)
         choices = []
         for game in games:
-            user_id, server = self.container_runner.get_user_id_and_image_name_from_game_server_name(game)
+          user_id, server, id_ = self.container_runner.get_user_id_and_image_name_from_game_server_name(game)
             display_name = await self.format_display_name(user_id=user_id, server_name=server)
             if current.lower() in display_name.lower():
                 choices.append(Choice(name=display_name, value=server))
@@ -204,7 +204,7 @@ class ContainerCommands(commands.Cog):
         games = self.container_runner.list_running_server_names()
         choices = []
         for game in games:
-            user_id, server = self.container_runner.get_user_id_and_image_name_from_game_server_name(game)
+          user_id, server, id_ = self.container_runner.get_user_id_and_image_name_from_game_server_name(game)
             display_name = await self.format_display_name(user_id=user_id, server_name=server)
             if current.lower() in display_name.lower():
                 choices.append(Choice(name=display_name, value=game))
