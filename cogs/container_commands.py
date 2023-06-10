@@ -40,6 +40,7 @@ class ContainerCommands(commands.Cog):
                 if none_valid is not None:
                     await interaction.response.send_message(f'Can\'t create server with custom characters {none_valid.string}')
                     return
+                custom_name = custom_name.replace(' ', '-').lower()
                 
             server_id = self.container_runner.create_game_server(user_id=userid, game=game, custom_name=custom_name)
             user_id, server_name = self.container_runner.get_user_id_and_image_name_from_game_server_name(server_name=server_id)
