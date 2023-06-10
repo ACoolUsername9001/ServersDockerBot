@@ -228,7 +228,7 @@ class DockerRunner(ContainerRunner):
 
     def run_command(self, server, command) -> Optional[str]:
         try:
-          user_id, image_name, id_ = self.get_user_id_and_image_name_from_game_server_name(server_name=server)
+            user_id, image_name, id_ = self.get_user_id_and_image_name_from_game_server_name(server_name=server)
             container = self.docker.containers.get(self._format_game_container_name(user_id=user_id, game=image_name))
         except Exception as e:
             raise ServerNotRunning(e)
@@ -279,7 +279,7 @@ class DockerRunner(ContainerRunner):
         if hashed_password is not None:
             filebrowser_command += f' --username admin --password "{hashed_password}"'
 
-      user_id, game, id_ = self.get_user_id_and_image_name_from_game_server_name(server_name=server)
+        user_id, game, id_ = self.get_user_id_and_image_name_from_game_server_name(server_name=server)
 
         mounts = [Mount(source=self._format_game_container_name(user_id=user_id, game=game), target='/tmp/data', type='volume')]
 
@@ -311,14 +311,14 @@ class DockerRunner(ContainerRunner):
             file_browser.stop()
 
     def list_server_ports(self, server) -> List[str]:
-      user_id, image_name, id_ = self.get_user_id_and_image_name_from_game_server_name(server_name=server)
+        user_id, image_name, id_ = self.get_user_id_and_image_name_from_game_server_name(server_name=server)
         container = self.docker.containers.get(self._format_game_container_name(user_id=user_id, game=image_name))
         return self.get_ports_from_container(container)
 
     def get_server_logs(self, server, lines_limit: Optional[int] = None) -> str:
         if lines_limit is None:
             lines_limit = 'all'
-      user_id, image_name, id_ = self.get_user_id_and_image_name_from_game_server_name(server_name=server)
+        user_id, image_name, id_ = self.get_user_id_and_image_name_from_game_server_name(server_name=server)
         container = self.docker.containers.get(self._format_game_container_name(user_id=user_id, game=image_name))
         logs = ansi_escape.sub(b'', container.logs(tail=lines_limit))
         return _convert_to_string(logs)

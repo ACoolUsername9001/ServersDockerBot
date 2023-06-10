@@ -153,7 +153,7 @@ class ContainerCommands(commands.Cog):
         games = self.container_runner.list_stopped_server_names()
         choices = []
         for game in games:
-          user_id, server, id_ = self.container_runner.get_user_id_and_image_name_from_game_server_name(game)
+            user_id, server, id_ = self.container_runner.get_user_id_and_image_name_from_game_server_name(game)
             display_name = await self.format_display_name(user_id=user_id, server_name=server)
             if current.lower() in display_name.lower():
                 choices.append(Choice(name=display_name, value=game))
@@ -168,7 +168,7 @@ class ContainerCommands(commands.Cog):
             if game in file_browsers:
                 continue
 
-          user_id, server, id_ = self.container_runner.get_user_id_and_image_name_from_game_server_name(game)
+            user_id, server, id_ = self.container_runner.get_user_id_and_image_name_from_game_server_name(game)
             display_name = await self.format_display_name(user_id=user_id, server_name=server)
             if current.lower() in display_name.lower():
                 choices.append(Choice(name=display_name, value=game))
@@ -179,7 +179,7 @@ class ContainerCommands(commands.Cog):
         file_browsers = self.container_runner.list_file_browser_names(user_id=interaction.user.id)
         choices = []
         for game in file_browsers:
-          user_id, server, id_ = self.container_runner.get_user_id_and_image_name_from_file_browser_name(game)
+            user_id, server, id_ = self.container_runner.get_user_id_and_image_name_from_file_browser_name(game)
             display_name = await self.format_display_name(user_id=user_id, server_name=server)
             if current.lower() in display_name.lower():
                 choices.append(Choice(name=display_name, value=game))
@@ -191,7 +191,7 @@ class ContainerCommands(commands.Cog):
         games = self.container_runner.list_server_names(user_id=userid)
         choices = []
         for game in games:
-          user_id, server, id_ = self.container_runner.get_user_id_and_image_name_from_game_server_name(game)
+            user_id, server, id_ = self.container_runner.get_user_id_and_image_name_from_game_server_name(game)
             display_name = await self.format_display_name(user_id=user_id, server_name=server)
             if current.lower() in display_name.lower():
                 choices.append(Choice(name=display_name, value=server))
@@ -204,7 +204,7 @@ class ContainerCommands(commands.Cog):
         games = self.container_runner.list_running_server_names()
         choices = []
         for game in games:
-          user_id, server, id_ = self.container_runner.get_user_id_and_image_name_from_game_server_name(game)
+            user_id, server, id_ = self.container_runner.get_user_id_and_image_name_from_game_server_name(game)
             display_name = await self.format_display_name(user_id=user_id, server_name=server)
             if current.lower() in display_name.lower():
                 choices.append(Choice(name=display_name, value=game))
