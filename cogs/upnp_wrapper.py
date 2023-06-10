@@ -89,12 +89,12 @@ class UPNPWrapper(ContainerRunner):
 
     def list_file_browser_names(self, user_id) -> List[str]:
         return self._container_runner.list_file_browser_names(user_id=user_id)
-
+a
     def list_game_names(self) -> List[str]:
         return self._container_runner.list_game_names()
 
-    def create_game_server(self, user_id, game: str, custom_name: Optional[str] = None) -> str:
-        return self._container_runner.create_game_server(user_id=user_id, game=game, custom_name=custom_name)
+    def create_game_server(self, user_id, game: str) -> str:
+        return self._container_runner.create_game_server(user_id=user_id, game=game)
 
     def get_ports_from_container(self, container) -> List[str]:
         return self._container_runner.get_ports_from_container(container=container)
