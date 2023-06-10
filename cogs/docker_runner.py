@@ -282,7 +282,7 @@ class DockerRunner(ContainerRunner):
 
         user_id, game, id_ = self.get_user_id_and_image_name_from_game_server_name(server_name=server)
 
-        mounts = [Mount(source=self._format_game_container_name(user_id=user_id, game=game), target='/tmp/data', type='volume')]
+        mounts = [Mount(source=self._format_game_container_name(user_id=user_id, game=game, id_=id_), target='/tmp/data', type='volume')]
 
         if self._cert_path:
             mounts.append(Mount(source=self._cert_path, target='/tmp/cert'))
