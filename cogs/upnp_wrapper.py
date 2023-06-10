@@ -89,7 +89,7 @@ class UPNPWrapper(ContainerRunner):
 
     def list_file_browser_names(self, user_id) -> List[str]:
         return self._container_runner.list_file_browser_names(user_id=user_id)
-a
+
     def list_game_names(self) -> List[str]:
         return self._container_runner.list_game_names()
 
