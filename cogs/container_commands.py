@@ -97,14 +97,14 @@ class ContainerCommands(commands.Cog):
         ports = self.container_runner.list_server_ports(server=game)
         available_access_points = {f'{self._main_domain}:{port}' for port in ports}
         user_id, server_name, id_ = self.container_runner.get_user_id_and_image_name_from_game_server_name(server_name=game)
-        await interaction.response.send_message(f'{await self.format_display_name(user_id=user_id, server_name=server_name)} is listening on port(s): {", ".join(available_access_points)}')
+        await interaction.response.send_message(f'{await self.format_display_name(user_id=user_id, server_name=server_name, index=id_)} is listening on port(s): {", ".join(available_access_points)}')
 
     @app_commands.command(name='get-server-logs', description='Gets the logs of a given server')
     @app_commands.checks.has_permissions(administrator=True)
     @app_commands.guilds(1013092707494809700)
     async def get_server_logs(self, interaction: Interaction, game: str):
         user_id, server_name, id_ = self.container_runner.get_user_id_and_image_name_from_game_server_name(server_name=game)
-        prefix = f'***{await self.format_display_name(server_name=server_name, user_id=user_id)} Logs***\n'
+        prefix = f'***{await self.format_display_name(server_name=server_name, user_id=user_id, index=id_)} Logs***\n'
         max_log_size = MAX_MESSAGE_SIZE - len(prefix)
         logs = self.container_runner.get_server_logs(server=game, lines_limit=max_log_size)
 
@@ -132,19 +132,20 @@ class ContainerCommands(commands.Cog):
         available_access_points = {f'{self._main_domain}:{port}' for port in available_ports}
 
         user_id, server, id_ = self.container_runner.get_user_id_and_image_name_from_game_server_name(game)
-        await interaction.response.send_message(f'Starting {await self.format_display_name(user_id=user_id, server_name=server)} on port(s): {", ".join(available_access_points)}')
+        await interaction.response.send_message(f'Starting {await self.format_display_name(user_id=user_id, server_name=server, index=id_)} on port(s): {", ".join(available_access_points)}')
 
     @create.autocomplete('game')
     async def auto_complete_all_images(self, interaction: Interaction, current: str):
         games = self.container_runner.list_game_names()
         return [Choice(name=await self.format_display_name(server_name=game), value=game) for game in games if game.startswith(current)]
 
-    async def format_display_name(self, server_name, user_id: Optional[int] = None):
+    async def format_display_name(self, server_name, user_id: Optional[int] = None, index: Optional[int] = None):
         new_container_name = server_name.replace('-', ' ').title()
-
         if user_id:
+            if index is None:
+                index = 0
             user = await self.bot.fetch_user(int(user_id))
-            return f'{user.name}#{user.discriminator}\'s {new_container_name}'
+            return f'{user.name}#{user.discriminator}\'s {new_container_name}, {index=}'
 
         return new_container_name
 
@@ -154,7 +155,7 @@ class ContainerCommands(commands.Cog):
         choices = []
         for game in games:
             user_id, server, id_ = self.container_runner.get_user_id_and_image_name_from_game_server_name(game)
-            display_name = await self.format_display_name(user_id=user_id, server_name=server)
+            display_name = await self.format_display_name(user_id=user_id, server_name=server, index=id_)
             if current.lower() in display_name.lower():
                 choices.append(Choice(name=display_name, value=game))
         return choices
@@ -169,7 +170,7 @@ class ContainerCommands(commands.Cog):
                 continue
 
             user_id, server, id_ = self.container_runner.get_user_id_and_image_name_from_game_server_name(game)
-            display_name = await self.format_display_name(user_id=user_id, server_name=server)
+            display_name = await self.format_display_name(user_id=user_id, server_name=server, index=id_)
             if current.lower() in display_name.lower():
                 choices.append(Choice(name=display_name, value=game))
         return choices
@@ -180,7 +181,7 @@ class ContainerCommands(commands.Cog):
         choices = []
         for game in file_browsers:
             user_id, server, id_ = self.container_runner.get_user_id_and_image_name_from_file_browser_name(game)
-            display_name = await self.format_display_name(user_id=user_id, server_name=server)
+            display_name = await self.format_display_name(user_id=user_id, server_name=server, index=id_)
             if current.lower() in display_name.lower():
                 choices.append(Choice(name=display_name, value=game))
         return choices
@@ -192,7 +193,7 @@ class ContainerCommands(commands.Cog):
         choices = []
         for game in games:
             user_id, server, id_ = self.container_runner.get_user_id_and_image_name_from_game_server_name(game)
-            display_name = await self.format_display_name(user_id=user_id, server_name=server)
+            display_name = await self.format_display_name(user_id=user_id, server_name=server, index=id_)
             if current.lower() in display_name.lower():
                 choices.append(Choice(name=display_name, value=server))
         return choices
@@ -205,7 +206,7 @@ class ContainerCommands(commands.Cog):
         choices = []
         for game in games:
             user_id, server, id_ = self.container_runner.get_user_id_and_image_name_from_game_server_name(game)
-            display_name = await self.format_display_name(user_id=user_id, server_name=server)
+            display_name = await self.format_display_name(user_id=user_id, server_name=server, index=id_)
             if current.lower() in display_name.lower():
                 choices.append(Choice(name=display_name, value=game))
         return choices
