@@ -32,17 +32,10 @@ class ContainerCommands(commands.Cog):
     @app_commands.checks.has_permissions(administrator=True)
     @app_commands.guilds(1013092707494809700)
     @app_commands.describe(game='Game Server')
-    async def create(self, interaction: Interaction, game: str, custom_name: Optional[str] = None):
+    async def create(self, interaction: Interaction, game: str):
         userid = interaction.user.id
         try:
-            if custom_name is not None:
-                none_valid: Optional[re.Match] = re.match(r'[^\w ]', custom_name)
-                if none_valid is not None:
-                    await interaction.response.send_message(f'Can\'t create server with custom characters {none_valid.string}')
-                    return
-                custom_name = custom_name.replace(' ', '-').lower()
-                
-            server_id = self.container_runner.create_game_server(user_id=userid, game=game, custom_name=custom_name)
+            server_id = self.container_runner.create_game_server(user_id=userid, game=game)
             user_id, server_name = self.container_runner.get_user_id_and_image_name_from_game_server_name(server_name=server_id)
             await interaction.response.send_message(f'Created server {server_name.replace("-", " ").title()}', ephemeral=True)
         except Exception as e:
