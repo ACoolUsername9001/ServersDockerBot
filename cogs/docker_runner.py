@@ -91,14 +91,14 @@ class DockerRunner(ContainerRunner):
         ports = list(image.attrs.get('Config', {}).get('ExposedPorts', {}))
         return ports
 
-    def _format_game_container_name(self, user_id=None, game=None, id_=None) -> str:
-        if not id_:
+    def _format_game_container_name(self, user_id=None, game=None, index=None) -> str:
+        if not index:
             if not game:
                 if not user_id:
                     return f'{self._games_prefix}-'
                 return f'{self._games_prefix}-{user_id}-'
             return f'{self._games_prefix}-{user_id}-{game}'
-        return f'{self._games_prefix}-{user_id}-{id_}-{game}'
+        return f'{self._games_prefix}-{user_id}-{index}-{game}'
 
     def _format_file_browser_container_name(self, user_id, server: Optional[str] = None) -> str:
         return f'{self._filebrowser_prefix}-{user_id}-{server if server is not None else ""}'
@@ -106,27 +106,27 @@ class DockerRunner(ContainerRunner):
     def _format_image_name(self, tag):
         return f'{self._games_repository}:{tag}'
 
-    def _list_server_volumes(self, user_id=None, prefix: Optional[str] = None) -> List[Volume]:
-        return self.docker.volumes.list(filters={'name': self._format_game_container_name(user_id=user_id, game=prefix)})
+    def _list_server_volumes(self, user_id=None, index: Optional[int] = None, prefix: Optional[str] = None) -> List[Volume]:
+        return self.docker.volumes.list(filters={'name': self._format_game_container_name(user_id=user_id, index=index, game=prefix)})
 
-    def _list_running_server_containers(self, user_id=None, prefix: Optional[str] = None) -> List[Container]:
-        return self.docker.containers.list(filters={'name': self._format_game_container_name(user_id=user_id, game=prefix)})
+    def _list_running_server_containers(self, user_id=None, index: Optional[int] = None, prefix: Optional[str] = None) -> List[Container]:
+        return self.docker.containers.list(filters={'name': self._format_game_container_name(user_id=user_id, index=index, game=prefix)})
 
-    def _list_file_browsers(self, user_id, server: Optional[str] = None) -> List[Container]:
+    def _list_file_browsers(self, user_id, index: Optional[int] = None, server: Optional[str] = None) -> List[Container]:
         return self.docker.containers.list(filters={'name': self._format_file_browser_container_name(user_id=user_id, server=server)})
 
     def _list_game_images(self) -> List[Image]:
         return self.docker.images.list(all=True, name=self._games_repository)
 
-    def list_server_names(self, user_id=None, prefix: Optional[str] = None) -> List[str]:
-        return [self._hide_games_prefix(v.name) for v in self._list_server_volumes(user_id, prefix)]
+    def list_server_names(self, user_id=None, index: Optional[int] = None, prefix: Optional[str] = None) -> List[str]:
+        return [self._hide_games_prefix(v.name) for v in self._list_server_volumes(user_id, index, prefix)]
 
-    def list_running_server_names(self, user_id=None, prefix: Optional[str] = None) -> List[str]:
-        return [self._hide_games_prefix(c.name) for c in self._list_running_server_containers(user_id=user_id, prefix=prefix)]
+    def list_running_server_names(self, user_id=None, index: Optional[int] = None, prefix: Optional[str] = None) -> List[str]:
+        return [self._hide_games_prefix(c.name) for c in self._list_running_server_containers(user_id=user_id, index=index, prefix=prefix)]
 
-    def list_stopped_server_names(self, user_id: Optional[Any] = None, prefix: Optional[str] = None) -> List[str]:
-        servers = self.list_server_names(user_id=user_id, prefix=prefix)
-        running_servers = self.list_running_server_names(user_id=user_id, prefix=prefix)
+    def list_stopped_server_names(self, user_id: Optional[Any] = None, index: Optional[int] = None, prefix: Optional[str] = None) -> List[str]:
+        servers = self.list_server_names(user_id=user_id, index=index, prefix=prefix)
+        running_servers = self.list_running_server_names(user_id=user_id, index=index, prefix=prefix)
         return [server for server in servers if server not in running_servers]
 
     def list_file_browser_names(self, user_id) -> List[str]:
@@ -155,11 +155,12 @@ class DockerRunner(ContainerRunner):
                     break
             if free:
                 server_id = i
+                break
         
         if server_id is None:
             raise MaxServersReached()
 
-        return self._hide_games_prefix(self.docker.volumes.create(name=self._format_game_container_name(user_id=user_id, game=game, id_=server_id)).name)
+        return self._hide_games_prefix(self.docker.volumes.create(name=self._format_game_container_name(user_id=user_id, game=game, index=server_id)).name)
 
     def _get_server_image_working_dir(self, image_tag):
         image_name = self._format_image_name(image_tag)
@@ -190,11 +191,11 @@ class DockerRunner(ContainerRunner):
         return available_ports
 
     def start_game_server(self, game, ports: Optional[List[str]] = None, command_parameters: Optional[str] = None) -> List[str]:
-        user_id, image_name, id_ = self.get_user_id_and_image_name_from_game_server_name(game)
+        user_id, image_name, index = self.get_user_id_and_image_name_from_game_server_name(game)
         if image_name not in self.list_game_names():
             raise GameNotFound(f'Game {image_name} was not found')
 
-        all_servers = self.list_server_names(user_id=user_id, prefix=image_name)
+        all_servers = self.list_server_names(user_id=user_id, prefix=image_name, index=index)
         if len(all_servers) == 0:
             raise ServerNotFound(f'Server of game {game} was not found')
 
@@ -203,7 +204,7 @@ class DockerRunner(ContainerRunner):
             raise ServerAlreadyRunning(f'Server of game {game} is already running')
 
         working_dir = self._get_server_image_working_dir(image_name)
-        server_name = self._format_game_container_name(user_id=user_id, game=image_name, id_=id_)
+        server_name = self._format_game_container_name(user_id=user_id, game=image_name, index=index)
         if working_dir:
             mount = [Mount(target=working_dir, source=server_name, type='volume')]
         else:
@@ -282,7 +283,7 @@ class DockerRunner(ContainerRunner):
 
         user_id, game, id_ = self.get_user_id_and_image_name_from_game_server_name(server_name=server)
 
-        mounts = [Mount(source=self._format_game_container_name(user_id=user_id, game=game, id_=id_), target='/tmp/data', type='volume')]
+        mounts = [Mount(source=self._format_game_container_name(user_id=user_id, game=game, index=id_), target='/tmp/data', type='volume')]
 
         if self._cert_path:
             mounts.append(Mount(source=self._cert_path, target='/tmp/cert'))

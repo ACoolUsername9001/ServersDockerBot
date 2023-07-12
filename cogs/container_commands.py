@@ -195,7 +195,10 @@ class ContainerCommands(commands.Cog):
             user_id, server, id_ = self.container_runner.get_user_id_and_image_name_from_game_server_name(game)
             display_name = await self.format_display_name(user_id=user_id, server_name=server, index=id_)
             if current.lower() in display_name.lower():
-                choices.append(Choice(name=display_name, value=server))
+                if id_ is not None:
+                    choices.append(Choice(name=display_name, value=f'{id_}-{server}'))
+                else:
+                    choices.append(Choice(name=display_name, value=f'{server}'))
         return choices
 
     @run_command.autocomplete('game')
