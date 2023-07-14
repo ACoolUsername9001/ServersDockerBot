@@ -145,7 +145,7 @@ class ContainerCommands(commands.Cog):
             if index is None:
                 index = 0
             user = await self.bot.fetch_user(int(user_id))
-            return f'{user.name}#{user.discriminator}\'s {new_container_name}, {index=}'
+            return f'{user.name}#{user.discriminator}\'s {new_container_name}, index={index}'
 
         return new_container_name
 

@@ -70,7 +70,7 @@ class DockerRunner(ContainerRunner):
 
     @staticmethod
     def get_user_id_and_image_name_from_game_server_name(server_name) -> tuple[Optional[str], Optional[str], Optional[str]]:
-        match = re.match(r'(?P<userid>\w+)-?(?P<id>\d+)?-(?P<server>.+)', server_name)
+        match = re.match(r'(?P<userid>\w+)(-(?P<id>\d+))?-(?P<server>.+)', server_name)
         groups = match.groupdict()
         return groups.get('userid'), groups.get('server'), groups.get('id')
 
@@ -92,9 +92,9 @@ class DockerRunner(ContainerRunner):
         return ports
 
     def _format_game_container_name(self, user_id=None, game=None, index=None) -> str:
-        if not index:
-            if not game:
-                if not user_id:
+        if index is None:
+            if game is None:
+                if user_id is None:
                     return f'{self._games_prefix}-'
                 return f'{self._games_prefix}-{user_id}-'
             return f'{self._games_prefix}-{user_id}-{game}'
@@ -144,13 +144,13 @@ class DockerRunner(ContainerRunner):
         if game not in game_images:
             raise GameNotFound(f'Game {game} was not found')
         
-        existing_servers = self.list_server_names(user_id=user_id, prefix=game)
+        existing_servers = self.list_server_names(user_id=user_id)
         server_id: Optional[int] = None
         for i in range(5):
             free = True
             for server_name in existing_servers:
                 user_id, image_name, id_ = self.get_user_id_and_image_name_from_game_server_name(server_name=server_name)
-                if id_ == i:
+                if id_ == i and image_name == game:
                     free = False
                     break
             if free:
@@ -314,7 +314,7 @@ class DockerRunner(ContainerRunner):
 
     def list_server_ports(self, server) -> List[str]:
         user_id, image_name, id_ = self.get_user_id_and_image_name_from_game_server_name(server_name=server)
-        container = self.docker.containers.get(self._format_game_container_name(user_id=user_id, game=image_name))
+        container = self.docker.containers.get(self._format_game_container_name(user_id=user_id, game=image_name, index=id_))
         return self.get_ports_from_container(container)
 
     def get_server_logs(self, server, lines_limit: Optional[int] = None) -> str:
