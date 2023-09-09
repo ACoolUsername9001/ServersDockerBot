@@ -16,7 +16,6 @@ MAX_MESSAGE_SIZE = 2000
 
 
 class ContainerCommands(commands.Cog):
-
     def __init__(self, bot: commands.Bot, container_runner: Optional[ContainerRunner] = None, main_domain: Optional[str] = None, **kwargs):
         if not container_runner:
             container_runner = DockerRunner()
@@ -33,7 +32,9 @@ class ContainerCommands(commands.Cog):
         user_id = str(interaction.user.id)
         try:
             server_info: ServerInfo = self.container_runner.create_game_server(user_id=user_id, image_id=game)
-            await interaction.response.send_message(f'Created server {server_info.image.name.replace("-", " ").replace(":", " ").replace("/", " ").title()}', ephemeral=True)
+            await interaction.response.send_message(
+                f'Created server {server_info.image.name.replace("-", " ").replace(":", " ").replace("/", " ").title()}', ephemeral=True
+            )
         except Exception as e:
             logging.error(f'Failed to create container: {e}', exc_info=True)
             await interaction.response.send_message('Failed to create server please try again later.', ephemeral=True)
@@ -113,7 +114,7 @@ class ContainerCommands(commands.Cog):
 
         if len(logs) > max_log_size:
             logs = logs[-max_log_size:]
-        await interaction.response.send_message(prefix+logs, ephemeral=True)
+        await interaction.response.send_message(prefix + logs, ephemeral=True)
 
     @commands.command(name='sync')
     async def sync(self, ctx: commands.Context, guild: Optional[discord.Guild] = None):
@@ -122,9 +123,11 @@ class ContainerCommands(commands.Cog):
     @app_commands.command(name='start')
     @app_commands.checks.has_permissions(administrator=True)
     @app_commands.guilds(1013092707494809700)
-    @app_commands.describe(game='What kind of server to start',
-                           server_ports='Space separated list of ports the server is listening on format: `port_on_server`:`target_port`/`protocol`',
-                           command_parameters='Optional parameters to pass to the server')
+    @app_commands.describe(
+        game='What kind of server to start',
+        server_ports='Space separated list of ports the server is listening on format: `port_on_server`:`target_port`/`protocol`',
+        command_parameters='Optional parameters to pass to the server',
+    )
     async def start_container(self, interaction: discord.Interaction, game: str, server_ports: Optional[str] = None, command_parameters: Optional[str] = None):
         if server_ports is not None:
             formatted_ports = {}
@@ -135,7 +138,7 @@ class ContainerCommands(commands.Cog):
                 else:
                     ports = ports[0]
                     protocol = PortProtocol.TCP
-                
+
                 ports = ports.split(':')
                 if len(ports) == 2:
                     server_port, target_port = ports
@@ -143,7 +146,9 @@ class ContainerCommands(commands.Cog):
                     server_port = ports[0]
                     target_port = None
 
-                formatted_ports[Port(number=int(server_port), protocol=PortProtocol(protocol))] = Port(number=int(target_port), protocol=PortProtocol(protocol)) if target_port is not None else None
+                formatted_ports[Port(number=int(server_port), protocol=PortProtocol(protocol))] = (
+                    Port(number=int(target_port), protocol=PortProtocol(protocol)) if target_port is not None else None
+                )
         else:
             formatted_ports = None
 
@@ -158,7 +163,11 @@ class ContainerCommands(commands.Cog):
     @create.autocomplete('game')
     async def auto_complete_all_images(self, interaction: Interaction, current: str):
         image_info_list = self.container_runner.list_images()
-        return [Choice(name=await self.format_display_name(info=image_info), value=image_info.id_) for image_info in image_info_list if image_info.name.replace(':', ' ').replace('/', ' ').replace('-', ' ').index(current) != -1]
+        return [
+            Choice(name=await self.format_display_name(info=image_info), value=image_info.id_)
+            for image_info in image_info_list
+            if image_info.name.replace(':', ' ').replace('/', ' ').replace('-', ' ').index(current) != -1
+        ]
 
     async def format_display_name(self, info: Union[ServerInfo, ImageInfo]):
         if isinstance(info, ImageInfo):
