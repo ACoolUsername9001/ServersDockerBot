@@ -70,7 +70,7 @@ DOMAIN = 'acooldomain.co'
 
 
 def create_labels_filter(**kwargs: Optional[str]) -> list[str]:
-    return [f'{key}={value}' if value is not None else f'{key}' for key, value in kwargs]
+    return [f'{key}={value}' if value is not None else f'{key}' for key, value in kwargs.items()]
 
 
 class DockerRunner(ContainerRunner):
