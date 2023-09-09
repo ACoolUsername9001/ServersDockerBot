@@ -150,7 +150,7 @@ class DockerRunner(ContainerRunner):
         return [self.get_server_info(str(volume.id)) for volume in volumes]
 
     def list_images(self) -> List[ImageInfo]:
-        images = cast(list[Image], self.docker.images.list(filters={'labels': create_labels_filter(type=ServerType.GAME.value)}))
+        images = cast(list[Image], self.docker.images.list(filters={'label': create_labels_filter(type=ServerType.GAME.value)}))
 
         image_info_list: list[ImageInfo] = []
 
