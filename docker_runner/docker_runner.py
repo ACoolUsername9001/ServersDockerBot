@@ -12,7 +12,7 @@ from docker.models.containers import Container
 from docker.models.images import Image
 from docker.models.volumes import Volume
 from docker.types import Mount
-from container_runner.container_runner_interface import ContainerRunner, ImageInfo, Port, ServerInfo, ServerType
+from docker_runner.container_runner.container_runner_interface import ContainerRunner, ImageInfo, Port, ServerInfo, ServerType
 
 GAMES_REPOSITORY = 'games'
 FILE_BROWSER_PREFIX = 'filebrowser'
