@@ -1,10 +1,9 @@
 import socket
 import logging
-from typing import Optional, List, Any, Union
+from typing import Optional, List, Union
 import upnpclient
 
-from cogs.container_runner.container_runner_interface import ServerInfo, ServerType
-from ..cogs.container_runner.container_runner_interface import ContainerRunner, ImageInfo, Port, ServerInfo, ServerType
+from docker_runner.container_runner.container_runner_interface import ContainerRunner, ImageInfo, Port, ServerInfo, ServerType
 from enum import Enum
 
 
