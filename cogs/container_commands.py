@@ -184,7 +184,7 @@ class ContainerCommands(commands.Cog):
     async def autocomplete_all_stopped_containers(self, interaction: Interaction, current: str):
         servers = self.container_runner.list_servers()
         choices = []
-        for server in (server for server in servers if server.on):
+        for server in (server for server in servers if not server.on):
             display_name = await self.format_display_name(server)
             if current.lower() in display_name.lower():
                 choices.append(Choice(name=display_name, value=server.id_))
