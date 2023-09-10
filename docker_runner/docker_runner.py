@@ -7,7 +7,7 @@ from pydantic import BaseModel
 import chardet
 import docker
 import select
-from typing import Optional, List, Union, cast
+from typing import Literal, Optional, List, Union, cast
 from docker.models.containers import Container
 from docker.models.images import Image
 from docker.models.volumes import Volume
@@ -146,8 +146,8 @@ class DockerRunner(ContainerRunner):
         )
 
     def list_servers(self, user_id: Optional[str] = None, image_id: Optional[str] = None, type: ServerType = ServerType.GAME) -> List[ServerInfo]:
-        volumes = self.docker.volumes.list(filters={'label': create_labels_filter(user_id=user_id, image_id=image_id, type=type.value)})
-        return [self.get_server_info(str(volume.id)) for volume in volumes]
+        volumes = self.docker.volumes.list(filters={'label': create_labels_filter(user_id=user_id, image_id=image_id)})
+        return [self.get_server_info(str(volume.id), server_type=type) for volume in volumes]
 
     def list_images(self) -> List[ImageInfo]:
         images = cast(list[Image], self.docker.images.list(filters={'label': create_labels_filter(type=ServerType.GAME.value)}))
