@@ -283,7 +283,7 @@ class DockerRunner(ContainerRunner):
         if hashed_password is not None:
             filebrowser_command += f' --username admin --password "{hashed_password}"'
 
-        server_info = self.get_server_info(server_id=server_id)
+        server_info = self.get_server_info(server_id=server_id, server_type=ServerType.FILE_BROWSER)
 
         mounts = [Mount(source=server_info.id_, target='/tmp/data', type='volume')]
 
@@ -298,13 +298,13 @@ class DockerRunner(ContainerRunner):
         container = cast(
             Container,
             self.docker.containers.create(
-                image=self._filebrowser_image,
+                image=server_info.image.id_,
                 auto_remove=True,
                 command=filebrowser_command,
                 mounts=mounts,
                 ports={'80/tcp': None},
                 labels=ContainerLabels(
-                    user_id=owner_id, image_id=self._filebrowser_image, volume_id=server_info.id_, type=ServerType.FILE_BROWSER
+                    user_id=owner_id, image_id=server_info.image.id_, volume_id=server_info.id_, type=ServerType.FILE_BROWSER
                 ).model_dump(mode='json'),
             ),
         )
@@ -319,9 +319,8 @@ class DockerRunner(ContainerRunner):
             list[Container],
             self.docker.containers.list(
                 filters={
-                    'label': [f'user_id={user_id}', f'volume_id={server_id}', f'type={ServerType.FILE_BROWSER}']
-                    if server_id is not None
-                    else [f'user_id={user_id}', f'type={ServerType.FILE_BROWSER}'],
+                    'label': create_labels_filter(user_id=user_id, volume_id=server_id, type=ServerType.FILE_BROWSER.value)
+
                 }
             ),
         )
