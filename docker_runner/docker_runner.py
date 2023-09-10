@@ -306,6 +306,7 @@ class DockerRunner(ContainerRunner):
                 labels=ContainerLabels(
                     user_id=owner_id, image_id=server_info.image.id_, volume_id=server_info.id_, type=ServerType.FILE_BROWSER
                 ).model_dump(mode='json'),
+                tty=True,
             ),
         )
         container.start()
