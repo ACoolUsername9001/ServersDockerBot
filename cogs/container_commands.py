@@ -171,7 +171,7 @@ class ContainerCommands(commands.Cog):
 
     async def format_display_name(self, info: Union[ServerInfo, ImageInfo]):
         if isinstance(info, ImageInfo):
-            new_container_name = info.name.replace('-', ' ').title()
+            new_container_name = (info.name.replace('-', ' ') + info.version).title()
             return new_container_name
 
         else:
