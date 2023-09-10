@@ -240,7 +240,7 @@ class DockerRunner(ContainerRunner):
 
     def run_command(self, server_id: str, command: str) -> Optional[str]:
         try:
-            container = cast(Container, self.docker.containers.get(server_id))
+            container = cast(Container, self.docker.containers.list(filters={'label': create_labels_filter(server_id=server_id)})[0])
         except Exception as e:
             raise ServerNotRunning(e)
 
@@ -354,12 +354,12 @@ class DockerRunner(ContainerRunner):
         return _convert_to_string(logs)
 
     def list_file_browser_servers(self, user_id: str) -> list[ServerInfo]:
-        containers = cast(list[Container], self.docker.containers.list(filters={'label': create_labels_filter(user_id=user_id, type=ServerType.FILE_BROWSER)}))
+        containers = cast(list[Container], self.docker.containers.list(filters={'label': create_labels_filter(user_id=user_id, type=ServerType.FILE_BROWSER.value)}))
         server_info_list: list[ServerInfo] = []
         for container in containers:
             assert isinstance(container.attrs, dict), f'Container.attrs is not dict {type(container.attrs)=}'
 
-            labels = ContainerLabels(**container.attrs.get('Labels', {}))
+            labels = ContainerLabels(**container.attrs.get('Config', {}).get('Labels', {}))
             server_info = self.get_server_info(server_id=labels.volume_id, server_type=ServerType.FILE_BROWSER)
             server_info_list.append(server_info)
 
