@@ -240,7 +240,7 @@ class DockerRunner(ContainerRunner):
 
     def run_command(self, server_id: str, command: str) -> Optional[str]:
         try:
-            container = cast(Container, self.docker.containers.list(filters={'label': create_labels_filter(server_id=server_id)})[0])
+            container = cast(Container, self.docker.containers.list(filters={'label': create_labels_filter(volume_id=server_id)})[0])
         except Exception as e:
             raise ServerNotRunning(e)
 
