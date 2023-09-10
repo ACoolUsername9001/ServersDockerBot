@@ -99,7 +99,7 @@ class DockerRunner(ContainerRunner):
                     'label': create_labels_filter(
                         volume_id=server_info.id_,
                         image_id=server_info.image.id_,
-                        type=server_type,
+                        type=server_type.value,
                     ),
                 },
             ),
@@ -179,7 +179,7 @@ class DockerRunner(ContainerRunner):
         if len(existing_servers) > 5:
             raise MaxServersReached()
 
-        volume: Volume = cast(Volume, self.docker.volumes.create(labels=VolumeLabels(user_id=user_id, image_id=image.id_).model_dump()))
+        volume: Volume = cast(Volume, self.docker.volumes.create(labels=VolumeLabels(user_id=user_id, image_id=image.id_).model_dump(mode='json')))
 
         assert volume.attrs is not None, 'Volume.attrs was None'
 
@@ -222,7 +222,7 @@ class DockerRunner(ContainerRunner):
                     image_id=server_info.image.id_,
                     volume_id=server_info.id_,
                     type=ServerType.GAME,
-                ).model_dump(),
+                ).model_dump(mode='json'),
             ),
         )
         container.start()
@@ -305,7 +305,7 @@ class DockerRunner(ContainerRunner):
                 ports={'80/tcp': None},
                 labels=ContainerLabels(
                     user_id=owner_id, image_id=self._filebrowser_image, volume_id=server_info.id_, type=ServerType.FILE_BROWSER
-                ).model_dump(),
+                ).model_dump(mode='json'),
             ),
         )
         container.start()

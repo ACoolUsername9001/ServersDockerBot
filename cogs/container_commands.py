@@ -32,8 +32,9 @@ class ContainerCommands(commands.Cog):
         user_id = str(interaction.user.id)
         try:
             server_info: ServerInfo = self.container_runner.create_game_server(user_id=user_id, image_id=game)
+            display_name = self.format_display_name(server_info)
             await interaction.response.send_message(
-                f'Created server {server_info.image.name.replace("-", " ").replace(":", " ").replace("/", " ").title()}', ephemeral=True
+                f'Created server {display_name}', ephemeral=True
             )
         except Exception as e:
             logging.error(f'Failed to create container: {e}', exc_info=True)
@@ -100,7 +101,7 @@ class ContainerCommands(commands.Cog):
             await interaction.response.send_message('Failed to get server ports')
             return
 
-        available_access_points = {f'{self._main_domain}:{port.number}/{port.protocol}' for port in info.ports}
+        available_access_points = {f'{self._main_domain}:{port.number}/{port.protocol.value}' for port in info.ports}
         await interaction.response.send_message(f'{await self.format_display_name(info)} is listening on port(s): {", ".join(available_access_points)}')
 
     @app_commands.command(name='get-server-logs', description='Gets the logs of a given server')
@@ -152,13 +153,27 @@ class ContainerCommands(commands.Cog):
         else:
             formatted_ports = None
 
-        server_info = self.container_runner.start_game_server(server_id=game, ports=ports, command_parameters=command_parameters)
+        server_info = self.container_runner.start_game_server(server_id=game, ports=formatted_ports, command_parameters=command_parameters)
         if server_info.ports is None:
             await interaction.response.send_message('Failed to get server ports')
             return
-        available_access_points = {f'{self._main_domain}:{port.number}/{port.protocol}' for port in server_info.ports}
+        available_access_points = {f'{self._main_domain}:{port.number}/{port.protocol.value}' for port in server_info.ports}
 
         await interaction.response.send_message(f'Starting {await self.format_display_name(server_info)} on port(s): {", ".join(available_access_points)}')
+
+    @app_commands.command(name='stop')
+    @app_commands.checks.has_permissions(administrator=True)
+    @app_commands.guilds(1013092707494809700)
+    @app_commands.describe(
+        game='What server to stop',
+    )
+    async def stop_container(self, interaction: discord.Interaction, game: str):
+        info = self.container_runner.stop_game_server(server_id=game)
+        server_display_name = self.format_display_name(info)
+        if info.on:
+            await interaction.response.send_message(f'Failed to stop server {server_display_name}')
+        else:
+            await interaction.response.send_message(f'Stopped server {server_display_name}')
 
     @create.autocomplete('game')
     async def auto_complete_all_images(self, interaction: Interaction, current: str):
@@ -228,10 +243,13 @@ class ContainerCommands(commands.Cog):
     @run_command.autocomplete('game')
     @get_server_ports.autocomplete('game')
     @get_server_logs.autocomplete('game')
+    @stop_container.autocomplete('game')
     async def autocomplete_user_active_containers(self, interaction: Interaction, current: str):
         servers = self.container_runner.list_servers()
         choices = []
         for server in servers:
+            if not server.on:
+                continue
             display_name = await self.format_display_name(server)
             if current.lower() in display_name.lower():
                 choices.append(Choice(name=display_name, value=server.id_))
