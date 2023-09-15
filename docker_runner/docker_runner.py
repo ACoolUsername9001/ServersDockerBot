@@ -91,7 +91,7 @@ class DockerRunner(ContainerRunner):
         self._key_path = key_path
         self._domain = domain
 
-    def _get_server_container(self, server_info: ServerInfo, server_type: ServerType) -> Optional[Container]:
+    def _get_server_container(self, server_info: ServerInfo, server_type: ServerType, user_id: Optional[str] = None) -> Optional[Container]:
         container_list: list[Container] = cast(
             list[Container],
             self.docker.containers.list(
@@ -100,6 +100,7 @@ class DockerRunner(ContainerRunner):
                         volume_id=server_info.id_,
                         image_id=server_info.image.id_,
                         type=server_type.value,
+                        user_id=user_id,
                     ),
                 },
             ),
@@ -113,7 +114,7 @@ class DockerRunner(ContainerRunner):
 
         return container_list[0]
 
-    def get_server_info(self, server_id: str, server_type: ServerType = ServerType.GAME) -> ServerInfo:
+    def get_server_info(self, server_id: str, user_id: Optional[str] = None, server_type: ServerType = ServerType.GAME) -> ServerInfo:
         volume: Optional[Volume] = cast(Optional[Volume], self.docker.volumes.get(server_id))
         if volume is None:
             raise ServerNotFound()
@@ -131,7 +132,7 @@ class DockerRunner(ContainerRunner):
 
         server_info = ServerInfo(id_=str(volume.id), user_id=volume_labels.user_id, image=image, on=False)
 
-        container = self._get_server_container(server_info=server_info, server_type=server_type)
+        container = self._get_server_container(server_info=server_info, user_id=user_id, server_type=server_type)
 
         if container is None:
             return server_info
@@ -283,7 +284,7 @@ class DockerRunner(ContainerRunner):
         if hashed_password is not None:
             filebrowser_command += f' --username admin --password "{hashed_password}"'
 
-        server_info = self.get_server_info(server_id=server_id, server_type=ServerType.FILE_BROWSER)
+        server_info = self.get_server_info(server_id=server_id, user_id=owner_id, server_type=ServerType.FILE_BROWSER)
 
         mounts = [Mount(source=server_info.id_, target='/tmp/data', type='volume')]
 
@@ -313,7 +314,7 @@ class DockerRunner(ContainerRunner):
         time.sleep(0.01)
         container = cast(Container, self.docker.containers.get(container_id=container.id))
 
-        return self.get_server_info(server_id=server_id, server_type=ServerType.FILE_BROWSER)
+        return self.get_server_info(server_id=server_id, user_id=owner_id, server_type=ServerType.FILE_BROWSER)
 
     def stop_file_browsing(self, user_id: str, server_id: Optional[str] = None):
         file_browsers = cast(
@@ -361,7 +362,7 @@ class DockerRunner(ContainerRunner):
             assert isinstance(container.attrs, dict), f'Container.attrs is not dict {type(container.attrs)=}'
 
             labels = ContainerLabels(**container.attrs.get('Config', {}).get('Labels', {}))
-            server_info = self.get_server_info(server_id=labels.volume_id, server_type=ServerType.FILE_BROWSER)
+            server_info = self.get_server_info(server_id=labels.volume_id, user_id=user_id, server_type=ServerType.FILE_BROWSER)
             server_info_list.append(server_info)
 
         return server_info_list

@@ -16,7 +16,7 @@ class ServerType(str, Enum):
 
 
 class Port(BaseModel):
-    number: int
+    number: int = Field(lt=65535, gt=1)
     protocol: PortProtocol
 
     @property
