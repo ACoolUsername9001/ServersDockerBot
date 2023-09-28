@@ -1,13 +1,16 @@
+from typing import Optional
 from sqlalchemy.orm import Session
 from . import models
 
 
-def get_user(db: Session, user_id: str) -> models.User:
-    return models.User.from_database_user(db.query(models.DatabaseUser).filter(models.DatabaseUser.username == user_id).first())
+def get_user(db: Session, user_id: str) -> Optional[models.User]:
+    user = db.query(models.DatabaseUser).filter(models.DatabaseUser.username == user_id).first()
+    return models.User.from_database_user(user) if user is not None else user
 
 
-def get_user_by_email(db: Session, email: str) -> models.User:
-    return models.User.from_database_user(db.query(models.DatabaseUser).filter(models.DatabaseUser.email == email).first())
+def get_user_by_email(db: Session, email: str) -> Optional[models.User]:
+    user = db.query(models.DatabaseUser).filter(models.DatabaseUser.email == email).first()
+    return models.User.from_database_user(user) if user is not None else user
 
 
 def get_users(db: Session, skip: int = 0, limit: int = 100) -> list[models.User]:

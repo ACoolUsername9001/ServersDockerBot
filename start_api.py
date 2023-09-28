@@ -1,10 +1,11 @@
+from contextlib import contextmanager
 from datetime import datetime, timedelta
 from enum import Enum
 import os
 from sqlalchemy.orm import Session
 import secrets
 import string
-from typing import Annotated, Any
+from typing import Annotated, Any, Optional
 from pathlib import Path
 import bcrypt
 from fastapi import Depends, FastAPI, HTTPException, Request, status
@@ -67,8 +68,9 @@ def get_password_hash(password):
     return pwd_context.hash(password)
 
 
-def authenticate_user(fake_db, username: str, password: str):
-    user = get_user(fake_db, username)
+def authenticate_user(db_context, username: str, password: str):
+    with db_context as db:
+        user = get_user(db, username)
     if not user:
         return False
     if not verify_password(password, user.password_hash):
@@ -88,12 +90,16 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
 
 
 # Dependency
+@contextmanager
 def get_db():
-    return SessionLocal()
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 
-
-def user_data(db: Annotated[Session, Depends(get_db)], token: Annotated[str, Depends(oauth2_password_scheme)]) -> models.User:
+def user_data(db_context: Annotated[Session, Depends(get_db)], token: Annotated[str, Depends(oauth2_password_scheme)]) -> models.User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -108,7 +114,8 @@ def user_data(db: Annotated[Session, Depends(get_db)], token: Annotated[str, Dep
 
     except JWTError:
         raise credentials_exception
-    user = get_user(db, data.username)
+    with db_context as db:
+        user = get_user(db, data.username)
     
     if user is None:
         raise credentials_exception
@@ -159,7 +166,7 @@ def get_users(user: Annotated[models.User, Depends(user_data)]) -> list[models.U
     ...
 
 
-@app.post('/users/create')
+@app.post('/users')
 def create_user(user: Annotated[models.User, Depends(user_data)], username: str, password: str, email: str, permissions: list[models.Permission],) -> list[models.UserBase]:
     ...
 
@@ -169,19 +176,27 @@ def get_servers(user: Annotated[models.User, Depends(user_data)]) -> list[Server
     docker_runner = DockerRunner()
     return docker_runner.list_servers()
 
-@app.get('/servers/{server_id}')
+@app.get('/servers/{server_id}', include_in_schema=False)
 def get_server(user: Annotated[models.User, Depends(user_data)], server_id: str) -> ServerInfo:
     docker_runner = DockerRunner()
     return docker_runner.get_server_info(server_id=server_id)
 
 
-@app.post('/servers/{server_id}/start')
-def start_server(user: Annotated[models.User, Depends(user_data)], server_id: str, ports: dict[Port, Port|None]|None = None, command: str|None = None) -> ServerInfo:
+class PortMapping(BaseModel):
+    source_port: Port
+    destination_port: Optional[Port] = None
+
+class StartServerRequest(BaseModel):
+    ports: list[PortMapping] = []
+    command: Optional[str] = None
+
+@app.post('/servers/{server_id}/start', summary='Start')
+def start_server(user: Annotated[models.User, Depends(user_data)], server_id: str, request: StartServerRequest) -> ServerInfo:
     docker_runner = DockerRunner()
-    return docker_runner.start_game_server(server_id=server_id, ports=ports, command_parameters=command,)
+    return docker_runner.start_game_server(server_id=server_id, ports={mapping.source_port: mapping.destination_port for mapping in request.ports} if len(request.ports) > 0 else None, command_parameters=request.command,)
 
 
-@app.post('/servers/{server_id}/stop')
+@app.post('/servers/{server_id}/stop', summary='Stop')
 def stop_server(user: Annotated[models.User, Depends(user_data)], server_id: str) -> ServerInfo:
     docker_runner = DockerRunner()
     return docker_runner.stop_game_server(server_id=server_id)
@@ -199,12 +214,15 @@ def delete_server(user: Annotated[models.User, Depends(user_data)], server_id: s
     return docker_runner.delete_game_server(server_id=server_id)
 
 
+class RunCommandRequest(BaseModel):
+    command: str
+
 @app.post('/servers/{server_id}/command')
-def run_command(user: Annotated[models.User, Depends(user_data)], server_id: str, command: str) -> str:
+def run_command(user: Annotated[models.User, Depends(user_data)], server_id: str, request: RunCommandRequest) -> str:
     if models.Permission.RUN_COMMAND not in user.permissions and models.Permission.ADMIN not in user.permissions:
         raise HTTPException(401, 'Unauthorized')
     docker_runner = DockerRunner()
-    response = docker_runner.run_command(server_id=server_id, command=command)
+    response = docker_runner.run_command(server_id=server_id, command=request.command)
     if response is None:
         raise Exception()  # TODO: change to HTTP exception
     return response
@@ -227,7 +245,7 @@ class FileBrowserData(BaseModel):
     password: str
 
 
-@app.post('/servers/{server_id}/browse')
+@app.post('/browsers/{server_id}')
 def start_file_browser(user: Annotated[models.User, Depends(user_data)], server_id: str) -> FileBrowserData:
     alphabet = string.ascii_letters + string.digits + string.punctuation
     alphabet = ''.join(x for x in alphabet if x != '`')
