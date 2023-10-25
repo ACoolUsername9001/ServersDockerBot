@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import requests
 from api_code.database import models
-from api_code.database.crud import create_user, get_user, get_user_by_email
+from api_code.database.crud import create_user, get_user, get_user_by_email, get_users as get_all_users
 from api_code.database.database import engine, SessionLocal
 from docker_runner.docker_runner import DockerRunner
 from docker_runner.container_runner.container_runner_interface import ServerInfo, ServerType, Port, PortProtocol, ImageInfo
@@ -32,7 +32,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 oauth2_password_scheme = OAuth2PasswordBearer(tokenUrl='token')
 
-SECRET_KEY = ''
+SECRET_KEY = '7ce5bc4af7304247a472558dbc2853451a2b69f281a9d352966fea4ea4fec24c'
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
@@ -163,7 +163,8 @@ async def login_for_access_token(
 
 @app.get('/users')
 def get_users(user: Annotated[models.User, Depends(user_data)]) -> list[models.UserBase]:
-    ...
+    with get_db() as db:
+        return get_all_users(db)
 
 
 @app.post('/users')
