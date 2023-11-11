@@ -61,7 +61,7 @@ class UpnpClient:
                     NewRemoteHost=remote_addr,
                     NewLeaseDuration=0,
                     NewPortMappingDescription=f'{self._local_addr}:{local_port} to {remote_addr}:{remote_port} {protocol}',
-                    NewProtocol=f'{protocol}',
+                    NewProtocol=Protocol(protocol).value,
                 )
             except Exception as e:
                 print(f'Faield to open {remote_addr}:{remote_port}->{self._local_addr}:{local_port} {protocol}, {e}')
