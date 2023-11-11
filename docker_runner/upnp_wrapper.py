@@ -12,9 +12,54 @@ class Protocol(str, Enum):
     UDP = 'UDP'
 
 
+class UpnpClient:
+    def __init__(self):
+        self._devices = [device for device in upnpclient.discover(timeout=0.1) if 'AddPortMapping' in (action.name for action in device.actions)]
+        self._local_addr = self._get_ip()
+
+    @classmethod
+    def _get_ip(cls):
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.settimeout(0)
+        try:
+            # doesn't even have to be reachable
+            s.connect(('8.8.8.8', 1))
+            IP = s.getsockname()[0]
+        except Exception:
+            IP = '127.0.0.1'
+        finally:
+            s.close()
+        return IP
+
+    def add_port_mapping_using_server_info(self, server_info: ServerInfo):
+        
+        if server_info.ports is None:
+            return server_info
+
+        for port in server_info.ports:
+            self.add_port_mapping(local_port=port.number, remote_port=port.number, protocol=Protocol(port.protocol.upper()))
+        return server_info
+
+
+    def add_port_mapping(self, protocol: Protocol, local_port: int, remote_addr: str = '', remote_port: Optional[int] = None):
+        for device in self._devices:
+            try:
+                device.find_action('AddPortMapping')(
+                    NewEnabled='1',
+                    NewInternalClient=self._local_addr,
+                    NewInternalPort=local_port,
+                    NewExternalPort=remote_port if remote_port is not None else local_port,
+                    NewRemoteHost=remote_addr,
+                    NewLeaseDuration=0,
+                    NewPortMappingDescription=f'{self._local_addr}:{local_port} to {remote_addr}:{remote_port} {protocol}',
+                    NewProtocol=protocol,
+                )
+            except Exception as e:
+                print(f'Faield to open {remote_addr}:{remote_port}->{self._local_addr}:{local_port} {protocol}, {e}')
+
 class UPNPWrapper(ContainerRunner):
     def __init__(self, container_runner: ContainerRunner):
-        self._devices = [device for device in upnpclient.discover() if 'AddPortMapping' in (action.name for action in device.actions)]
+        self._devices = [device for device in upnpclient.discover(timeout=0.1) if 'AddPortMapping' in (action.name for action in device.actions)]
         self._container_runner = container_runner
         self._local_addr = self._get_ip()
         print(f'Local IP Address: {self._local_addr}')
@@ -31,20 +76,6 @@ class UPNPWrapper(ContainerRunner):
             return server_info
 
         return inner
-
-    @classmethod
-    def _get_ip(cls):
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.settimeout(0)
-        try:
-            # doesn't even have to be reachable
-            s.connect(('8.8.8.8', 1))
-            IP = s.getsockname()[0]
-        except Exception:
-            IP = '127.0.0.1'
-        finally:
-            s.close()
-        return IP
 
     def _add_port_mapping(self, protocol: Protocol, local_addr: str, local_port: int, remote_addr: str = '', remote_port: Optional[int] = None):
         for device in self._devices:

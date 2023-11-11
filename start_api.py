@@ -1,26 +1,24 @@
 from contextlib import contextmanager
 from datetime import datetime, timedelta
-from enum import Enum
-import os
 from sqlalchemy.orm import Session
 import secrets
 import string
 from typing import Annotated, Any, Optional
-from pathlib import Path
 import bcrypt
-from fastapi import Depends, FastAPI, HTTPException, Request, status
-from fastapi.responses import HTMLResponse
-from fastapi.security import OAuth2AuthorizationCodeBearer, OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import requests
 from api_code.database import models
-from api_code.database.crud import create_user, get_user, get_user_by_email, get_users as get_all_users
+from api_code.database.crud import create_user, get_user, get_users as get_all_users
 from api_code.database.database import engine, SessionLocal
 from docker_runner.docker_runner import DockerRunner
-from docker_runner.container_runner.container_runner_interface import ServerInfo, ServerType, Port, PortProtocol, ImageInfo
+from docker_runner.container_runner.container_runner_interface import ServerInfo, Port, ImageInfo
 from jose import JWTError, jwt
 from passlib.context import CryptContext
+
+from docker_runner.upnp_wrapper import UpnpClient
 docker_runner = DockerRunner()
 
 models.Base.metadata.create_all(bind=engine)
@@ -140,26 +138,6 @@ async def login_for_access_token(
     )
     return Token(access_token=access_token, token_type="bearer")
 
-# @app.get('/oauth2/authenticate')
-# def authenticate() -> HTMLResponse:
-#     return HTMLResponse(status_code=302, headers={'Location': f'{oauth2_code_scheme.model.flows.authorizationCode.authorizationUrl}?client_id=1058145347819556985&redirect_uri=http%3A%2F%2F127.0.0.1%3A8000%2Fauth&response_type=code&scope=guilds'})
-
-
-# @app.get('/oauth2/exchange-token')
-# async def auth(code: str):
-#     response = requests.post(
-#     'https://discord.com/api/oauth2/token', 
-#     headers={'Accept': 'application/json','Content-Type': 'application/x-www-form-urlencoded'},
-#     data={
-#         'grant_type': 'authorization_code',
-#         'client_id': '1058145347819556985',
-#         'client_secret': 'PiVhw857_T1BmPmPnhNQIGFaOtMqQLI_',
-#         'code': code,
-#         'redirect_uri': 'http://127.0.0.1:8000/auth',
-#     }
-#     )
-#     return response.json()
-
 
 def user_with_permissions(*permissions: models.Permission):
     def user_with_permissions_inner(user: Annotated[models.User, Depends(user_data)]):
@@ -219,7 +197,9 @@ class StartServerRequest(BaseModel):
 @app.post('/servers/{server_id}/start', summary='Start')
 def start_server(user: Annotated[models.User, Depends(user_data)], server_id: str, request: StartServerRequest) -> ServerInfo:
     docker_runner = DockerRunner()
-    return docker_runner.start_game_server(server_id=server_id, ports={mapping.source_port: mapping.destination_port for mapping in request.ports} if len(request.ports) > 0 else None, command_parameters=request.command,)
+    server_info = docker_runner.start_game_server(server_id=server_id, ports={mapping.source_port: mapping.destination_port for mapping in request.ports} if len(request.ports) > 0 else None, command_parameters=request.command,)
+    UpnpClient().add_port_mapping_using_server_info(server_info=server_info)
+    return server_info
 
 
 @app.post('/servers/{server_id}/stop', summary='Stop')
