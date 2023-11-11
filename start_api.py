@@ -198,7 +198,7 @@ class StartServerRequest(BaseModel):
 def start_server(user: Annotated[models.User, Depends(user_data)], server_id: str, request: StartServerRequest) -> ServerInfo:
     docker_runner = DockerRunner()
     server_info = docker_runner.start_game_server(server_id=server_id, ports={mapping.source_port: mapping.destination_port for mapping in request.ports} if len(request.ports) > 0 else None, command_parameters=request.command,)
-    UpnpClient(device_locations=['http://192.168.1.1:9000/TMSDeviceDescription.xml']).add_port_mapping_using_server_info(server_info=server_info)
+    UpnpClient().add_port_mapping_using_server_info(server_info=server_info)
     return server_info
 
 
