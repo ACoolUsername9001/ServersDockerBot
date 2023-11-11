@@ -13,8 +13,12 @@ class Protocol(str, Enum):
 
 
 class UpnpClient:
-    def __init__(self):
-        self._devices = [device for device in upnpclient.discover(timeout=0.1) if 'AddPortMapping' in (action.name for action in device.actions)]
+    def __init__(self, device_locations: Optional[list[str]] = None):
+        if device_locations:
+            self._devices = [upnpclient.Device(location) for location in device_locations]
+        else:
+            self._devices = [device for device in upnpclient.discover(timeout=0.1) if 'AddPortMapping' in (action.name for action in device.actions)]
+            
         self._local_addr = self._get_ip()
 
     @classmethod
