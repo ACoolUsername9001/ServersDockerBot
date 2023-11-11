@@ -17,7 +17,7 @@ class UpnpClient:
         if device_locations:
             self._devices = [upnpclient.Device(location) for location in device_locations]
         else:
-            self._devices = [device for device in upnpclient.discover(timeout=0.1) if 'AddPortMapping' in (action.name for action in device.actions)]
+            self._devices = [device for device in upnpclient.discover() if 'AddPortMapping' in (action.name for action in device.actions)]
             
         self._local_addr = self._get_ip()
 
@@ -48,7 +48,12 @@ class UpnpClient:
     def add_port_mapping(self, protocol: Protocol, local_port: int, remote_addr: str = '', remote_port: Optional[int] = None):
         for device in self._devices:
             try:
-                device.find_action('AddPortMapping')(
+                action = device.find_action('AddPortMapping')
+                if action is None:
+                    logging.error(f'Device {device} has no action "AddPortMapping"')
+                    continue
+                
+                action(
                     NewEnabled='1',
                     NewInternalClient=self._local_addr,
                     NewInternalPort=local_port,
@@ -56,7 +61,7 @@ class UpnpClient:
                     NewRemoteHost=remote_addr,
                     NewLeaseDuration=0,
                     NewPortMappingDescription=f'{self._local_addr}:{local_port} to {remote_addr}:{remote_port} {protocol}',
-                    NewProtocol=protocol,
+                    NewProtocol=f'{protocol}',
                 )
             except Exception as e:
                 print(f'Faield to open {remote_addr}:{remote_port}->{self._local_addr}:{local_port} {protocol}, {e}')
