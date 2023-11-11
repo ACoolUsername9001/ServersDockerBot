@@ -191,9 +191,11 @@ class ContainerCommands(commands.Cog):
 
         else:
             new_container_name = f"{info.image.name.replace('-', ' ')} {info.image.version}".title()
-
-        user = await self.bot.fetch_user(int(info.user_id))
-        return f'{user.name}#{user.discriminator}\'s {new_container_name}'
+        try:
+            user = await self.bot.fetch_user(int(info.user_id))
+            return f'{user.name}#{user.discriminator}\'s {new_container_name}'
+        except:
+            return f'{info.user_id}\'s {new_container_name}'
 
     @start_container.autocomplete('game')
     async def autocomplete_all_stopped_containers(self, interaction: Interaction, current: str):

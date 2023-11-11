@@ -2,7 +2,7 @@ import abc
 from enum import Enum
 from typing import Optional, List, Protocol, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 
 
 class PortProtocol(str, Enum):
@@ -19,8 +19,9 @@ class Port(BaseModel):
     number: int = Field(lt=65535, gt=1)
     protocol: PortProtocol
 
+    @computed_field()
     @property
-    def id_(self):
+    def id_(self) -> str:
         return f'{self.number}/{self.protocol.value}'
 
     def __hash__(self) -> int:
@@ -32,8 +33,9 @@ class ImageInfo(BaseModel):
     version: str
     ports: list[Port] = Field(default_factory=list)
 
+    @computed_field()
     @property
-    def id_(self):
+    def id_(self) -> str:
         return f'{self.name}:{self.version}'
 
 

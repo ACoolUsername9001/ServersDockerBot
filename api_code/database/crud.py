@@ -19,7 +19,10 @@ def get_users(db: Session, skip: int = 0, limit: int = 100) -> list[models.User]
 
 def create_user(db: Session, user: models.User):
     db_user = models.DatabaseUser(email=user.email, password_hash=user.password_hash, username=user.username, scope=':'.join(user.permissions))
+
+    user = db.query(models.DatabaseUser).filter(models.DatabaseUser.username == db_user.username).delete()
+    
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
-    return db_user
+    return models.User.from_database_user(db_user)

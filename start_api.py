@@ -161,21 +161,46 @@ async def login_for_access_token(
 #     return response.json()
 
 
+def user_with_permissions(*permissions: models.Permission):
+    def user_with_permissions_inner(user: Annotated[models.User, Depends(user_data)]):
+        if set(permissions) - set(user.permissions) and models.Permission.ADMIN not in user.permissions:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        return user
+    return user_with_permissions_inner
+
+
 @app.get('/users')
 def get_users(user: Annotated[models.User, Depends(user_data)]) -> list[models.UserBase]:
     with get_db() as db:
         return get_all_users(db)
 
 
+class CreateUserRequest(BaseModel):
+    username: str
+    password: str
+    email: str
+    permissions: list[models.Permission]
+
+
 @app.post('/users')
-def create_user(user: Annotated[models.User, Depends(user_data)], username: str, password: str, email: str, permissions: list[models.Permission],) -> list[models.UserBase]:
-    ...
+def create_user_api(user: Annotated[models.User, Depends(user_with_permissions(models.Permission.ADMIN))], request: CreateUserRequest) -> list[models.User]:
+    with get_db() as db:
+        return create_user(db, models.User(username=request.username, email=request.email, permissions=request.permissions, password_hash=get_password_hash(request.password)))
 
 
 @app.get('/servers')
 def get_servers(user: Annotated[models.User, Depends(user_data)]) -> list[ServerInfo]:
     docker_runner = DockerRunner()
-    return docker_runner.list_servers()
+    return sorted(docker_runner.list_servers(), key=lambda x: x.id_)
+
+@app.get('/images')
+def get_images(user: Annotated[models.User, Depends(user_data)]) -> list[ImageInfo]:
+    docker_runner = DockerRunner()
+    return docker_runner.list_images()
 
 @app.get('/servers/{server_id}', include_in_schema=False)
 def get_server(user: Annotated[models.User, Depends(user_data)], server_id: str) -> ServerInfo:
@@ -203,10 +228,14 @@ def stop_server(user: Annotated[models.User, Depends(user_data)], server_id: str
     return docker_runner.stop_game_server(server_id=server_id)
 
 
+class CreateServer(BaseModel):
+    image_id: str
+
+
 @app.post('/servers')
-def create_server(user: Annotated[models.User, Depends(user_data)], image_id: str):
+def create_server(user: Annotated[models.User, Depends(user_with_permissions(models.Permission.CREATE))], request: CreateServer) -> ServerInfo:
     docker_runner = DockerRunner()
-    return docker_runner.create_game_server(image_id=image_id, user_id=user.username)
+    return docker_runner.create_game_server(image_id=request.image_id, user_id=user.username)
 
 
 @app.delete('/servers/{server_id}')
