@@ -140,8 +140,7 @@ class DockerRunner(ContainerRunner):
         image = self.get_image_info(image_id=volume_labels.image_id)
         if image is None:
             raise GameNotFound()
-        else:
-            image = self.get_image_info(self._filebrowser_image)
+
 
         server_info = ServerInfo(id_=str(volume.id), user_id=volume_labels.user_id, image=image, on=False)
 
@@ -320,7 +319,7 @@ class DockerRunner(ContainerRunner):
         time.sleep(0.01)
         container = cast(Container, self.docker.containers.get(container_id=container.id))
 
-        return FileBrowserInfo(id_=container.id[:12], domain=self._domain, connected_to=server_info)
+        return FileBrowserInfo(id_=container.id[:12], domain=f'browsers.{self._domain}', connected_to=server_info)
 
     def stop_file_browsing(self, user_id: str, server_id: Optional[str] = None):
         file_browsers = cast(
@@ -369,7 +368,7 @@ class DockerRunner(ContainerRunner):
 
             labels = ContainerLabels(**container.attrs.get('Config', {}).get('Labels', {}))
             server_info = self.get_server_info(server_id=labels.volume_id, user_id=user_id)
-            server_info_list.append(FileBrowserInfo(id_=container.id[:12], domain=self._domain, connected_to=server_info))
+            server_info_list.append(FileBrowserInfo(id_=container.id[:12], domain=f'browsers.{self._domain}', connected_to=server_info))
 
         return server_info_list
 

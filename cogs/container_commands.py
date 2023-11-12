@@ -214,9 +214,8 @@ class ContainerCommands(commands.Cog):
         file_browsers = self.container_runner.list_file_browser_servers(user_id=str(interaction.user.id))
         choices = []
         for server in servers:
-            if server.id_ in (fb.id_ for fb in file_browsers):
+            if server.id_ in (fb.connected_to.id_ for fb in file_browsers):
                 continue
-
             display_name = await self.format_display_name(server)
             if current.lower() in display_name.lower():
                 choices.append(Choice(name=display_name, value=server.id_))
@@ -227,9 +226,9 @@ class ContainerCommands(commands.Cog):
         file_browsers = self.container_runner.list_file_browser_servers(user_id=str(interaction.user.id))
         choices = []
         for server in file_browsers:
-            display_name = await self.format_display_name(server)
+            display_name = await self.format_display_name(server.connected_to)
             if current.lower() in display_name.lower():
-                choices.append(Choice(name=display_name, value=server.id_))
+                choices.append(Choice(name=display_name, value=server.connected_to.id_))
         return choices
 
     @delete.autocomplete('game')

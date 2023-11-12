@@ -55,7 +55,7 @@ class FileBrowserInfo(BaseModel):
     @computed_field()
     @property
     def url(self) -> str:
-        return f'{self.id_}:{self.domain}'
+        return f'{self.id_}.{self.domain}'
 
 
 class ContainerRunner(Protocol):
