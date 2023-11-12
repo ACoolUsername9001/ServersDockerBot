@@ -49,6 +49,7 @@ class ServerInfo(BaseModel):
 
 class FileBrowserInfo(BaseModel):
     id_: str
+    owner_id: str
     domain: str
     connected_to: ServerInfo
     
