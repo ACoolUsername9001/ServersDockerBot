@@ -294,7 +294,7 @@ class DockerRunner(ContainerRunner):
         filebrowser_command = '-r /tmp/data'
 
         if hashed_password is not None:
-            filebrowser_command += f' --username admin --password "{hashed_password}"'
+            filebrowser_command += f' --username {owner_id} --password "{hashed_password}"'
 
         server_info = self.get_server_info(server_id=server_id, user_id=owner_id)
 
@@ -303,10 +303,9 @@ class DockerRunner(ContainerRunner):
         container = cast(
             Container,
             self.docker.containers.create(
-                image=server_info.image.id_,
+                image=FILE_BROWSER_IMAGE,
                 auto_remove=True,
                 command=filebrowser_command,
-                name=f'fb_{server_id}',
                 mounts=mounts,
                 network='browsers',
                 labels=ContainerLabels(
