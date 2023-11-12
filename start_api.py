@@ -44,6 +44,9 @@ class UsernamePasswordBearer():
                 headers={"WWW-Authenticate": "Bearer"},
             )
         return param
+    
+
+password_scheme = UsernamePasswordBearer()
 
 
 SECRET_KEY = '7ce5bc4af7304247a472558dbc2853451a2b69f281a9d352966fea4ea4fec24c'
@@ -113,7 +116,7 @@ def get_db():
         db.close()
 
 
-def user_data(db_context: Annotated[Session, Depends(get_db)], token: Annotated[str, Depends(oauth2_password_scheme)]) -> models.User:
+def user_data(db_context: Annotated[Session, Depends(get_db)], token: Annotated[str, Depends(password_scheme)]) -> models.User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
