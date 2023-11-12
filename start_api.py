@@ -6,7 +6,7 @@ import string
 from typing import Annotated, Any, Optional
 import bcrypt
 from fastapi import Depends, FastAPI, HTTPException, Request, status
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.security import HTTPBearer, OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import requests
@@ -28,25 +28,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # oauth2_code_scheme = OAuth2AuthorizationCodeBearer(authorizationUrl='https://discord.com/oauth2/authorize?scope=guilds', tokenUrl='https://discord.com/api/oauth2/token', scopes={'guilds':'guilds'},)
 
 
-oauth2_password_scheme = OAuth2PasswordBearer(tokenUrl='token')
-
-class UsernamePasswordBearer():
-    async def __call__(self, request: Request) -> Optional[str]:
-        authorization = request.headers.get("Authorization")
-        if authorization is None:
-            return None
-        
-        scheme, _, param = authorization.partition(" ")
-        if not authorization or scheme.lower() != "bearer":
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Not authenticated",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-        return param
-    
-
-password_scheme = UsernamePasswordBearer()
+password_scheme = HTTPBearer()
 
 
 SECRET_KEY = '7ce5bc4af7304247a472558dbc2853451a2b69f281a9d352966fea4ea4fec24c'
