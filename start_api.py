@@ -7,7 +7,7 @@ import string
 from typing import Annotated, Any, Optional, Union
 import bcrypt
 from fastapi import Depends, FastAPI, Form, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.security import HTTPBearer, OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import requests
@@ -29,7 +29,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # oauth2_code_scheme = OAuth2AuthorizationCodeBearer(authorizationUrl='https://discord.com/oauth2/authorize?scope=guilds', tokenUrl='https://discord.com/api/oauth2/token', scopes={'guilds':'guilds'},)
 
 
-oauth2_password_scheme = OAuth2PasswordBearer(tokenUrl='token')
+oauth2_password_scheme = HTTPBearer()
 
 SECRET_KEY = '7ce5bc4af7304247a472558dbc2853451a2b69f281a9d352966fea4ea4fec24c'
 ALGORITHM = "HS256"
@@ -48,19 +48,10 @@ app.add_middleware(
 )
 
 
-class PasswordRequestForm(OAuth2PasswordRequestForm):
-    def __init__(self, *, 
-                 grant_type: str | None = None, 
-                 username: str, 
-                 password: str, 
-                 scope: str = "", 
-                 client_id: str | None = None, 
-                 client_secret: str | None = None, 
-                 remember: bool|str = False,):
-        super().__init__(grant_type=grant_type, username=username, password=password, scope=scope, client_id=client_id, client_secret=client_secret)
-        print(remember)
-        self.remember = remember
-
+class PasswordRequestForm(BaseModel):
+    username: str
+    password: str
+    remember: bool|str = False
 
 
 class Token(BaseModel):
@@ -137,7 +128,7 @@ def user_data(db_context: Annotated[Session, Depends(get_db)], token: Annotated[
 
 @app.post("/token", response_model=Token)
 async def login_for_access_token(
-    form_data: Annotated[PasswordRequestForm, Depends()]
+    form_data: PasswordRequestForm,
 ):
     user = authenticate_user(get_db(), form_data.username, form_data.password)
     if not user:
