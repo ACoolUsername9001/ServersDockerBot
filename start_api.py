@@ -259,11 +259,10 @@ def get_server_logs(user: Annotated[models.User, Depends(user_data)], server_id:
 
 class FileBrowserData(BaseModel):
     url: str
-    username: str
     password: str
 
 
-@app.post('/browsers/{server_id}')
+@app.post('/browsers')
 def start_file_browser(user: Annotated[models.User, Depends(user_data)], server_id: str) -> FileBrowserData:
     alphabet = string.ascii_letters + string.digits + string.punctuation
     alphabet = ''.join(x for x in alphabet if x != '`')
@@ -271,12 +270,9 @@ def start_file_browser(user: Annotated[models.User, Depends(user_data)], server_
     hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
     file_browser_server_info = docker_runner.start_file_browser(server_id=server_id, owner_id=user.username, hashed_password=hashed_password)
-    if file_browser_server_info.ports is None:
-        raise Exception()
     
-    url = f'http://{docker_runner._domain}:{file_browser_server_info.ports[0].number}'    
-    
-    return FileBrowserData(url=url, username='admin', password=password)
+ 
+    return FileBrowserData(url=file_browser_server_info.id_, password=password)
 
 
 @app.get('/browsers')
