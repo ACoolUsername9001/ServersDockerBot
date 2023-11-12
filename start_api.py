@@ -193,7 +193,7 @@ def invite_user_api(user: Annotated[models.User, Depends(user_with_permissions(m
         token = create_token(db, token=models.SignupToken(token=token_str, email=request.email, permissions=request.permissions))
         
     m = MailClient(**CONFIG.mail.model_dump())
-    m.send_message(token.email, 'You have been invited to join ACoolGameManagement', f'please open this link: <a>https://games.acooldomain.co/signup?token={token.token}</a>')
+    m.send_message(token.email, 'You have been invited to join ACoolGameManagement', f'please open this link: https://games.acooldomain.co/signup?token={token.token}')
     m.quit()
     
     return request
