@@ -12,7 +12,7 @@ from docker.models.containers import Container
 from docker.models.images import Image
 from docker.models.volumes import Volume
 from docker.types import Mount
-from docker_runner.container_runner.container_runner_interface import ContainerRunner, ImageInfo, Port, ServerInfo, ServerType
+from docker_runner.container_runner.container_runner_interface import ContainerRunner, FileBrowserInfo, ImageInfo, Port, ServerInfo, ServerType
 from pathlib import Path
 from time import sleep
 
@@ -128,7 +128,7 @@ class DockerRunner(ContainerRunner):
 
         return container_list[0]
 
-    def get_server_info(self, server_id: str, user_id: Optional[str] = None, server_type: ServerType = ServerType.GAME) -> ServerInfo:
+    def get_server_info(self, server_id: str, user_id: Optional[str] = None) -> ServerInfo:
         volume: Optional[Volume] = cast(Optional[Volume], self.docker.volumes.get(server_id))
         if volume is None:
             raise ServerNotFound()
@@ -137,16 +137,15 @@ class DockerRunner(ContainerRunner):
             raise ServerNotFound('Volume has no attrs')
 
         volume_labels = VolumeLabels(**volume.attrs.get('Labels', {}))
-        if server_type == ServerType.GAME:
-            image = self.get_image_info(image_id=volume_labels.image_id)
-            if image is None:
-                raise GameNotFound()
+        image = self.get_image_info(image_id=volume_labels.image_id)
+        if image is None:
+            raise GameNotFound()
         else:
             image = self.get_image_info(self._filebrowser_image)
 
         server_info = ServerInfo(id_=str(volume.id), user_id=volume_labels.user_id, image=image, on=False)
 
-        container = self._get_server_container(server_info=server_info, user_id=user_id, server_type=server_type)
+        container = self._get_server_container(server_info=server_info, user_id=user_id, server_type=ServerType.GAME)
 
         if container is None:
             return server_info
@@ -160,9 +159,9 @@ class DockerRunner(ContainerRunner):
             ports=self._extract_ports_from_container(container=container),
         )
 
-    def list_servers(self, user_id: Optional[str] = None, image_id: Optional[str] = None, type: ServerType = ServerType.GAME) -> List[ServerInfo]:
+    def list_servers(self, user_id: Optional[str] = None, image_id: Optional[str] = None) -> List[ServerInfo]:
         volumes = self.docker.volumes.list(filters={'label': create_labels_filter(user_id=user_id, image_id=image_id)})
-        return [self.get_server_info(str(volume.id), server_type=type) for volume in volumes]
+        return [self.get_server_info(str(volume.id)) for volume in volumes]
 
     def list_images(self) -> List[ImageInfo]:
         images = cast(list[Image], self.docker.images.list(filters={'label': create_labels_filter(type=ServerType.GAME.value)}))
@@ -292,23 +291,15 @@ class DockerRunner(ContainerRunner):
 
         volume.remove(force=True)
 
-    def start_file_browser(self, server_id: str, owner_id: str, hashed_password=None) -> ServerInfo:
+    def start_file_browser(self, server_id: str, owner_id: str, hashed_password=None) -> FileBrowserInfo:
         filebrowser_command = '-r /tmp/data'
 
         if hashed_password is not None:
             filebrowser_command += f' --username admin --password "{hashed_password}"'
 
-        server_info = self.get_server_info(server_id=server_id, user_id=owner_id, server_type=ServerType.FILE_BROWSER)
+        server_info = self.get_server_info(server_id=server_id, user_id=owner_id)
 
         mounts = [Mount(source=server_info.id_, target='/tmp/data', type='volume')]
-
-        if self._cert_path:
-            mounts.append(Mount(source=self._cert_path, target='/tmp/cert'))
-            filebrowser_command += ' --cert /tmp/cert'
-
-        if self._key_path:
-            mounts.append(Mount(source=self._key_path, target='/tmp/key'))
-            filebrowser_command += ' --key /tmp/key'
 
         container = cast(
             Container,
@@ -329,7 +320,7 @@ class DockerRunner(ContainerRunner):
         time.sleep(0.01)
         container = cast(Container, self.docker.containers.get(container_id=container.id))
 
-        return self.get_server_info(server_id=server_id, user_id=owner_id, server_type=ServerType.FILE_BROWSER)
+        return FileBrowserInfo(id_=container.id[:12], domain=self._domain, connected_to=server_info)
 
     def stop_file_browsing(self, user_id: str, server_id: Optional[str] = None):
         file_browsers = cast(
@@ -370,15 +361,15 @@ class DockerRunner(ContainerRunner):
         logs = ANSI_ESCAPE.sub(b'', container.logs(tail=lines_limit))
         return _convert_to_string(logs)
 
-    def list_file_browser_servers(self, user_id: str) -> list[ServerInfo]:
+    def list_file_browser_servers(self, user_id: str) -> list[FileBrowserInfo]:
         containers = cast(list[Container], self.docker.containers.list(filters={'label': create_labels_filter(user_id=user_id, type=ServerType.FILE_BROWSER.value)}))
-        server_info_list: list[ServerInfo] = []
+        server_info_list: list[FileBrowserInfo] = []
         for container in containers:
             assert isinstance(container.attrs, dict), f'Container.attrs is not dict {type(container.attrs)=}'
 
             labels = ContainerLabels(**container.attrs.get('Config', {}).get('Labels', {}))
-            server_info = self.get_server_info(server_id=labels.volume_id, user_id=user_id, server_type=ServerType.FILE_BROWSER)
-            server_info_list.append(server_info)
+            server_info = self.get_server_info(server_id=labels.volume_id, user_id=user_id)
+            server_info_list.append(FileBrowserInfo(id_=container.id[:12], domain=self._domain, connected_to=server_info))
 
         return server_info_list
 
@@ -392,7 +383,7 @@ class DockerRunner(ContainerRunner):
             raise ServerNotRunning()
 
         container.stop()
-        return self.get_server_info(server_id=server_id, server_type=ServerType.GAME)
+        return self.get_server_info(server_id=server_id)
 
     @staticmethod
     def _extract_image_info_from_image(image: Image) -> list[ImageInfo]:

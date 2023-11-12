@@ -14,7 +14,7 @@ from api_code.database import models
 from api_code.database.crud import create_user, get_user, get_users as get_all_users
 from api_code.database.database import engine, SessionLocal
 from docker_runner.docker_runner import DockerRunner
-from docker_runner.container_runner.container_runner_interface import ServerInfo, Port, ImageInfo
+from docker_runner.container_runner.container_runner_interface import FileBrowserInfo, ServerInfo, Port, ImageInfo
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
@@ -272,7 +272,7 @@ def start_file_browser(user: Annotated[models.User, Depends(user_data)], server_
 
 
 @app.get('/browsers')
-def get_file_browsers(user: Annotated[models.User, Depends(user_data)]) -> list[ServerInfo]:
+def get_file_browsers(user: Annotated[models.User, Depends(user_data)]) -> list[FileBrowserInfo]:
     docker_runner = DockerRunner()
     return docker_runner.list_file_browser_servers(user_id=user.username)
 

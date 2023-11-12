@@ -47,6 +47,16 @@ class ServerInfo(BaseModel):
     domain: Optional[str] = None
     ports: Optional[list[Port]] = None
 
+class FileBrowserInfo(BaseModel):
+    id_: str
+    domain: str
+    connected_to: ServerInfo
+    
+    @computed_field()
+    @property
+    def url(self):
+        return f'{self.id_}:{self.domain}'
+
 
 class ContainerRunner(Protocol):
     @abc.abstractmethod
@@ -58,7 +68,7 @@ class ContainerRunner(Protocol):
         ...
 
     @abc.abstractmethod
-    def list_file_browser_servers(self, user_id: str) -> list[ServerInfo]:
+    def list_file_browser_servers(self, user_id: str) -> list[FileBrowserInfo]:
         ...
 
     @abc.abstractmethod
@@ -91,7 +101,7 @@ class ContainerRunner(Protocol):
         ...
 
     @abc.abstractmethod
-    def start_file_browser(self, server_id: str, owner_id: str, hashed_password=None) -> ServerInfo:
+    def start_file_browser(self, server_id: str, owner_id: str, hashed_password=None) -> FileBrowserInfo:
         ...
 
     @abc.abstractmethod

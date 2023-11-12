@@ -52,13 +52,10 @@ class ContainerCommands(commands.Cog):
         hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
         file_browser_info = self.container_runner.start_file_browser(owner_id=str(user_id), server_id=game, hashed_password=hashed_password)
-        if file_browser_info.ports is None:
-            await interaction.response.send_message('Failed to create file browser', ephemeral=True)
-            return
 
-        available_access_points = [f'http://{file_browser_info.domain}:{port.number}' for port in file_browser_info.ports]
+        available_access_points = f'https://{file_browser_info.url}'
 
-        await interaction.response.send_message(f'Opened file browser on {", ".join(available_access_points)}, Password: `{password}`', ephemeral=True)
+        await interaction.response.send_message(f'Opened file browser on {available_access_points}, Password: `{password}`', ephemeral=True)
 
     @app_commands.command(name='stop-browsing-files', description='Stops the file browser')
     @app_commands.checks.has_permissions(administrator=True)
