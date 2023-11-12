@@ -90,6 +90,9 @@ class DockerRunner(ContainerRunner):
         self._cert_path = cert_path
         self._key_path = key_path
         self._domain = domain
+        self._browser_network = self.docker.networks.get('browsers')
+        if self._browser_network is None:
+            self._browser_network = self.docker.networks.create('browsers')
 
     def _get_server_container(self, server_info: ServerInfo, server_type: ServerType, user_id: Optional[str] = None) -> Optional[Container]:
         container_list: list[Container] = cast(
@@ -303,7 +306,7 @@ class DockerRunner(ContainerRunner):
                 auto_remove=True,
                 command=filebrowser_command,
                 mounts=mounts,
-                ports={'80/tcp': None},
+                network='browsers',
                 labels=ContainerLabels(
                     user_id=owner_id, image_id=server_info.image.id_, volume_id=server_info.id_, type=ServerType.FILE_BROWSER
                 ).model_dump(mode='json'),
@@ -405,9 +408,3 @@ class DockerRunner(ContainerRunner):
                 host_ports = [v['HostPort'] for v in value]
                 available_ports.extend(Port(number=port, protocol=protocol) for port in host_ports)
         return available_ports
-
-
-if __name__ == '__main__':
-    d = DockerRunner()
-    server_info = d.create_game_server('ACoolUser', 'tinkerpop/gremlin-server:latest')
-    d.start_game_server(server_id=server_info.id_)
