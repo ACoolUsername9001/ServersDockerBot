@@ -7,7 +7,7 @@ import string
 from typing import Annotated, Any, Optional, Union
 import bcrypt
 from fastapi import Depends, FastAPI, Form, HTTPException, status
-from fastapi.security import HTTPBearer, OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer, OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import requests
@@ -102,14 +102,14 @@ def get_db():
         db.close()
 
 
-def user_data(db_context: Annotated[Session, Depends(get_db)], token: Annotated[str, Depends(oauth2_password_scheme)]) -> models.User:
+def user_data(db_context: Annotated[Session, Depends(get_db)], token: Annotated[HTTPAuthorizationCredentials, Depends(oauth2_password_scheme)]) -> models.User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token.credentials, SECRET_KEY, algorithms=[ALGORITHM])
         username = payload.get('sub')
         if username is None:
             raise credentials_exception
