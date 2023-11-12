@@ -1,18 +1,16 @@
 from contextlib import contextmanager
 from datetime import datetime, timedelta
+import json
 from typing_extensions import Annotated
+from uuid import uuid4
 from sqlalchemy.orm import Session
-import secrets
-import string
-from typing import Annotated, Any, Optional, Union
-import bcrypt
-from fastapi import Depends, FastAPI, Form, HTTPException, status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer, OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from typing import Annotated, Any, Optional
+from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
-import requests
+from pydantic import BaseModel
 from api_code.database import models
-from api_code.database.crud import create_user, get_user, get_users as get_all_users
+from api_code.database.crud import create_token, create_user, create_user_from_token, get_user, get_users as get_all_users
 from api_code.database.database import engine, SessionLocal
 from docker_runner.docker_runner import DockerRunner
 from docker_runner.container_runner.container_runner_interface import FileBrowserInfo, ServerInfo, Port, ImageInfo
@@ -20,19 +18,37 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 
 from docker_runner.upnp_wrapper import UpnpClient
-docker_runner = DockerRunner()
+from mail import MailClient
 
 models.Base.metadata.create_all(bind=engine)
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+class MailConfig(BaseModel):
+    username: str
+    password: str
+    domain: str
 
-# oauth2_code_scheme = OAuth2AuthorizationCodeBearer(authorizationUrl='https://discord.com/oauth2/authorize?scope=guilds', tokenUrl='https://discord.com/api/oauth2/token', scopes={'guilds':'guilds'},)
+
+class SiteConfig(BaseModel):
+    key: str
+    algorithm: str
+
+
+class Config(BaseModel):
+    mail: MailConfig
+    backend: SiteConfig
+
+
+with open('credentials.json', 'r') as f:
+    CONFIG = Config(**json.load(f))
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 oauth2_password_scheme = HTTPBearer()
 
-SECRET_KEY = '7ce5bc4af7304247a472558dbc2853451a2b69f281a9d352966fea4ea4fec24c'
-ALGORITHM = "HS256"
+SECRET_KEY = CONFIG.backend.key
+ALGORITHM = CONFIG.backend.algorithm
+
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 app = FastAPI()
@@ -165,17 +181,29 @@ def get_users(user: Annotated[models.User, Depends(user_data)]) -> list[models.U
         return get_all_users(db)
 
 
-class CreateUserRequest(BaseModel):
-    username: str
-    password: str
+class InviteUserRequests(BaseModel):
     email: str
     permissions: list[models.Permission]
 
 
 @app.post('/users')
-def create_user_api(user: Annotated[models.User, Depends(user_with_permissions(models.Permission.ADMIN))], request: CreateUserRequest) -> list[models.User]:
+def invite_user_api(user: Annotated[models.User, Depends(user_with_permissions(models.Permission.ADMIN))], request: InviteUserRequests) -> InviteUserRequests:
+    token_str = f'{uuid4()}'
     with get_db() as db:
-        return create_user(db, models.User(username=request.username, email=request.email, permissions=request.permissions, password_hash=get_password_hash(request.password)))
+        token = create_token(db, token=models.SignupToken(token=token_str, email=request.email, permissions=request.permissions))
+        
+    MailClient(**CONFIG.mail.model_dump()).send_message(token.email, 'You have been invited to join ACoolGameManagement', f'please open this link: <a>https://games.acooldomain.co/signup?token={token.token}</a>')
+    return request
+
+
+class CreateUserRequest(BaseModel):
+    username: str
+    password: str
+
+
+@app.post('/users/signup')
+def create_user_api(db_context: Annotated[Session, Depends(get_db)], token: str, request: CreateUserRequest) -> models.UserBase:
+    return create_user_from_token(db_context, token=token, username=request.username, password_hash=get_password_hash(request.password))
 
 
 @app.get('/servers')
@@ -267,6 +295,7 @@ class StartFileBrowserRequest(BaseModel):
 
 @app.post('/browsers')
 def start_file_browser(user: Annotated[models.User, Depends(user_data)], server_id: StartFileBrowserRequest) -> FileBrowserData:
+    docker_runner = DockerRunner()
     file_browser_server_info = docker_runner.start_file_browser(server_id=server_id.server_id, owner_id=user.username, hashed_password=user.password_hash)
     return FileBrowserData(url=file_browser_server_info.url)
 

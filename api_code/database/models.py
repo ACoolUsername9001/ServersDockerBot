@@ -47,6 +47,7 @@ class User(UserBase):
             password_hash = database_user.password_hash,
         )
 
+
 class DatabaseUser(Base):
     __tablename__ = 'users'
     
@@ -55,3 +56,25 @@ class DatabaseUser(Base):
     password_hash = Column(String)
     scope = Column(String)
     
+
+class DatabaseSignupToken(Base):
+    __tablename__ = 'tokens'
+    
+    token = Column(String, unique=True, index=True)
+    email = Column(String)
+    scope = Column(String)
+    
+
+class SignupToken(BaseModel):
+    token: str
+    email: str
+    permissions: list[Permission]
+
+    @classmethod
+    def from_database_token(cls, database_token: DatabaseSignupToken) -> Self:
+        permissions = database_token.scope.split(':')
+        return cls(
+            email=database_token.email,
+            permissions=permissions,
+            token=database_token.token,
+        )
