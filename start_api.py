@@ -1,11 +1,12 @@
 from contextlib import contextmanager
 from datetime import datetime, timedelta
+from typing_extensions import Annotated
 from sqlalchemy.orm import Session
 import secrets
 import string
-from typing import Annotated, Any, Optional
+from typing import Annotated, Any, Optional, Union
 import bcrypt
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, Form, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -46,6 +47,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+class PasswordRequestForm(OAuth2PasswordRequestForm):
+    remember: bool = False
+    def __init__(self, *, grant_type: str | None = None, username: str, password: str, scope: str = "", client_id: str | None = None, client_secret: str | None = None, remember=remember,):
+        super().__init__(grant_type=grant_type, username=username, password=password, scope=scope, client_id=client_id, client_secret=client_secret)
+        self.remember = remember
 
 
 
@@ -123,7 +130,7 @@ def user_data(db_context: Annotated[Session, Depends(get_db)], token: Annotated[
 
 @app.post("/token", response_model=Token)
 async def login_for_access_token(
-    form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
+    form_data: Annotated[PasswordRequestForm, Depends()]
 ):
     user = authenticate_user(get_db(), form_data.username, form_data.password)
     if not user:
@@ -132,7 +139,10 @@ async def login_for_access_token(
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    if form_data.remember:
+        access_token_expires = timedelta(days=30)
+    else:
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
     )
