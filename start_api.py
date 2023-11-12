@@ -5,8 +5,8 @@ import secrets
 import string
 from typing import Annotated, Any, Optional
 import bcrypt
-from fastapi import Depends, FastAPI, HTTPException, Request, status
-from fastapi.security import HTTPBearer, OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import requests
@@ -19,7 +19,7 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 
 from docker_runner.upnp_wrapper import UpnpClient
-
+docker_runner = DockerRunner()
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -28,8 +28,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # oauth2_code_scheme = OAuth2AuthorizationCodeBearer(authorizationUrl='https://discord.com/oauth2/authorize?scope=guilds', tokenUrl='https://discord.com/api/oauth2/token', scopes={'guilds':'guilds'},)
 
 
-password_scheme = HTTPBearer()
-
+oauth2_password_scheme = OAuth2PasswordBearer(tokenUrl='token')
 
 SECRET_KEY = '7ce5bc4af7304247a472558dbc2853451a2b69f281a9d352966fea4ea4fec24c'
 ALGORITHM = "HS256"
@@ -98,7 +97,7 @@ def get_db():
         db.close()
 
 
-def user_data(db_context: Annotated[Session, Depends(get_db)], token: Annotated[str, Depends(password_scheme)]) -> models.User:
+def user_data(db_context: Annotated[Session, Depends(get_db)], token: Annotated[str, Depends(oauth2_password_scheme)]) -> models.User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -122,15 +121,9 @@ def user_data(db_context: Annotated[Session, Depends(get_db)], token: Annotated[
     return user
 
 
-class UsernameAuth(BaseModel):
-    username: str
-    password: str
-    remember: bool = False
-
-
 @app.post("/token", response_model=Token)
 async def login_for_access_token(
-    form_data: Annotated[UsernameAuth, Depends()]
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
 ):
     user = authenticate_user(get_db(), form_data.username, form_data.password)
     if not user:
@@ -139,11 +132,7 @@ async def login_for_access_token(
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    if form_data.remember:
-        access_token_expires = timedelta(days=7)
-    else:
-        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
     )
