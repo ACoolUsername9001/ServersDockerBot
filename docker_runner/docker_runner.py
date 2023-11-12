@@ -13,6 +13,8 @@ from docker.models.images import Image
 from docker.models.volumes import Volume
 from docker.types import Mount
 from docker_runner.container_runner.container_runner_interface import ContainerRunner, ImageInfo, Port, ServerInfo, ServerType
+from pathlib import Path
+from time import sleep
 
 GAMES_REPOSITORY = 'games'
 FILE_BROWSER_PREFIX = 'filebrowser'
@@ -90,9 +92,18 @@ class DockerRunner(ContainerRunner):
         self._cert_path = cert_path
         self._key_path = key_path
         self._domain = domain
-        self._browser_network = self.docker.networks.get('browsers')
-        if self._browser_network is None:
+        try:
+            self._browser_network = self.docker.networks.get('browsers')
+        except:
             self._browser_network = self.docker.networks.create('browsers')
+        try:
+            self._nginx = self.docker.containers.get('browsers-nginx')
+        except:
+            self._nginx = None
+
+        if self._nginx is None:
+            self._nginx = self.docker.containers.run(image='nginx:latest', detach=True, name='browsers-nginx', ports={'80/tcp': ('127.0.0.1', '4080/tcp')}, network='browsers', mounts=[Mount(target='/etc/nginx/conf.d/default.conf', source=str(Path(__file__).parent/'nginx.conf'), read_only=True, type='bind')])
+    
 
     def _get_server_container(self, server_info: ServerInfo, server_type: ServerType, user_id: Optional[str] = None) -> Optional[Container]:
         container_list: list[Container] = cast(
@@ -305,6 +316,7 @@ class DockerRunner(ContainerRunner):
                 image=server_info.image.id_,
                 auto_remove=True,
                 command=filebrowser_command,
+                name=f'fb_{server_id}',
                 mounts=mounts,
                 network='browsers',
                 labels=ContainerLabels(
