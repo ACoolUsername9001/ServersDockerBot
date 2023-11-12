@@ -121,9 +121,15 @@ def user_data(db_context: Annotated[Session, Depends(get_db)], token: Annotated[
     return user
 
 
+class UsernameAuth(BaseModel):
+    username: str
+    password: str
+    remember: bool = False
+
+
 @app.post("/token", response_model=Token)
 async def login_for_access_token(
-    form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
+    form_data: Annotated[UsernameAuth, Depends()]
 ):
     user = authenticate_user(get_db(), form_data.username, form_data.password)
     if not user:
@@ -132,7 +138,11 @@ async def login_for_access_token(
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    if form_data.remember:
+        access_token_expires = timedelta(days=7)
+    else:
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        
     access_token = create_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
     )
