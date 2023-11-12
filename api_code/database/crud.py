@@ -39,7 +39,7 @@ def create_user_from_token(db: Session, token: str, username: str, password_hash
     
     db_user = models.DatabaseUser(email=token_item.email, scope=':'.join(token_item.permissions), username=username, password_hash=password_hash)
     
-    db.query(models.DatabaseUser).filter(models.DatabaseUser.username == db_user.username).delete()
+    db.query(models.DatabaseUser).filter(models.DatabaseUser.email == db_user.email).delete()
 
     db.add(db_user)
     db.commit()
