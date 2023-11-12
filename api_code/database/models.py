@@ -60,8 +60,8 @@ class DatabaseUser(Base):
 class DatabaseSignupToken(Base):
     __tablename__ = 'tokens'
     
-    token = Column(String, unique=True, index=True)
-    email = Column(String)
+    token = Column(String, primary_key=True, unique=True, index=True)
+    email = Column(String, unique=True, index=True)
     scope = Column(String)
     
 

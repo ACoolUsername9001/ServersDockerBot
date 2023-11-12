@@ -37,7 +37,7 @@ def create_user_from_token(db: Session, token: str, username: str, password_hash
     if token_item is None:
         raise Exception()
     
-    db_user = models.DatabaseUser(email=token_item.email, permissions=token_item.permissions, username=username, password_hash=password_hash)
+    db_user = models.DatabaseUser(email=token_item.email, scope=':'.join(token_item.permissions), username=username, password_hash=password_hash)
     
     db.query(models.DatabaseUser).filter(models.DatabaseUser.username == db_user.username).delete()
 
@@ -49,6 +49,7 @@ def create_user_from_token(db: Session, token: str, username: str, password_hash
 
 def create_token(db: Session, token: models.SignupToken):
     db_signup = models.DatabaseSignupToken(email=token.email, scope=':'.join(token.permissions), token=token.token)
+    db.query(models.DatabaseSignupToken).filter(models.DatabaseSignupToken.email == token.email).delete()
     db.add(db_signup)
     db.commit()
     db.refresh(db_signup)

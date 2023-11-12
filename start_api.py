@@ -192,7 +192,10 @@ def invite_user_api(user: Annotated[models.User, Depends(user_with_permissions(m
     with get_db() as db:
         token = create_token(db, token=models.SignupToken(token=token_str, email=request.email, permissions=request.permissions))
         
-    MailClient(**CONFIG.mail.model_dump()).send_message(token.email, 'You have been invited to join ACoolGameManagement', f'please open this link: <a>https://games.acooldomain.co/signup?token={token.token}</a>')
+    m = MailClient(**CONFIG.mail.model_dump())
+    m.send_message(token.email, 'You have been invited to join ACoolGameManagement', f'please open this link: <a>https://games.acooldomain.co/signup?token={token.token}</a>')
+    m.quit()
+    
     return request
 
 
@@ -202,8 +205,9 @@ class CreateUserRequest(BaseModel):
 
 
 @app.post('/users/signup')
-def create_user_api(db_context: Annotated[Session, Depends(get_db)], token: str, request: CreateUserRequest) -> models.UserBase:
-    return create_user_from_token(db_context, token=token, username=request.username, password_hash=get_password_hash(request.password))
+def create_user_api(token: str, request: CreateUserRequest) -> models.UserBase:
+    with get_db() as db:
+        return create_user_from_token(db, token=token, username=request.username, password_hash=get_password_hash(request.password))
 
 
 @app.get('/servers')
