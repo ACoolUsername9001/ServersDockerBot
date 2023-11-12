@@ -5,7 +5,7 @@ import secrets
 import string
 from typing import Annotated, Any, Optional
 import bcrypt
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -19,7 +19,7 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 
 from docker_runner.upnp_wrapper import UpnpClient
-docker_runner = DockerRunner()
+
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -29,6 +29,22 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 oauth2_password_scheme = OAuth2PasswordBearer(tokenUrl='token')
+
+class UsernamePasswordBearer():
+    async def __call__(self, request: Request) -> Optional[str]:
+        authorization = request.headers.get("Authorization")
+        if authorization is None:
+            return None
+        
+        scheme, _, param = authorization.partition(" ")
+        if not authorization or scheme.lower() != "bearer":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Not authenticated",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        return param
+
 
 SECRET_KEY = '7ce5bc4af7304247a472558dbc2853451a2b69f281a9d352966fea4ea4fec24c'
 ALGORITHM = "HS256"
@@ -142,7 +158,7 @@ async def login_for_access_token(
         access_token_expires = timedelta(days=7)
     else:
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-        
+
     access_token = create_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
     )
