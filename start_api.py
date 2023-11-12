@@ -49,8 +49,14 @@ app.add_middleware(
 
 
 class PasswordRequestForm(OAuth2PasswordRequestForm):
-    remember: bool = False
-    def __init__(self, *, grant_type: str | None = None, username: str, password: str, scope: str = "", client_id: str | None = None, client_secret: str | None = None, remember=remember,):
+    def __init__(self, *, 
+                 grant_type: str | None = None, 
+                 username: str, 
+                 password: str, 
+                 scope: str = "", 
+                 client_id: str | None = None, 
+                 client_secret: str | None = None, 
+                 remember: bool = False,):
         super().__init__(grant_type=grant_type, username=username, password=password, scope=scope, client_id=client_id, client_secret=client_secret)
         self.remember = remember
 
