@@ -366,8 +366,8 @@ class DockerRunner(ContainerRunner):
             assert isinstance(container.attrs, dict), f'Container.attrs is not dict {type(container.attrs)=}'
 
             labels = ContainerLabels(**container.attrs.get('Config', {}).get('Labels', {}))
-            server_info = self.get_server_info(server_id=labels.volume_id, user_id=user_id)
-            server_info_list.append(FileBrowserInfo(id_=container.id[:12], domain=f'browsers.{self._domain}', connected_to=server_info))
+            server_info = self.get_server_info(server_id=labels.volume_id)
+            server_info_list.append(FileBrowserInfo(id_=container.id[:12], domain=f'browsers.{self._domain}', connected_to=server_info, owner_id=labels.user_id))
 
         return server_info_list
 
