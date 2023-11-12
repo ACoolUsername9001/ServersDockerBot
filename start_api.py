@@ -278,10 +278,10 @@ def get_file_browsers(user: Annotated[models.User, Depends(user_data)]) -> list[
 
 
 class StopFileBrowserRequest(BaseModel):
-    browser_id: str
+    server_id: str
 
 
 @app.delete('/browsers')
-def stop_file_browser(user: Annotated[models.User, Depends(user_data)], browser_id: StopFileBrowserRequest):
+def stop_file_browser(user: Annotated[models.User, Depends(user_data)], stop_file_browser_request: StopFileBrowserRequest):
     docker_runner = DockerRunner()
-    docker_runner.stop_file_browsing(user_id=user.username, server_id=browser_id.browser_id)
+    docker_runner.stop_file_browsing(user_id=user.username, server_id=stop_file_browser_request.server_id)
