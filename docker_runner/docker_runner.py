@@ -318,7 +318,7 @@ class DockerRunner(ContainerRunner):
         time.sleep(0.01)
         container = cast(Container, self.docker.containers.get(container_id=container.id))
 
-        return FileBrowserInfo(id_=container.id[:12], domain=f'browsers.{self._domain}', connected_to=server_info)
+        return FileBrowserInfo(id_=container.id[:12], domain=f'browsers.{self._domain}', connected_to=server_info, owner_id=owner_id)
 
     def stop_file_browsing(self, user_id: str, server_id: Optional[str] = None):
         file_browsers = cast(
