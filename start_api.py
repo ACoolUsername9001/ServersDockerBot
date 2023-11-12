@@ -56,8 +56,9 @@ class PasswordRequestForm(OAuth2PasswordRequestForm):
                  scope: str = "", 
                  client_id: str | None = None, 
                  client_secret: str | None = None, 
-                 remember: bool = False,):
+                 remember: bool|str = False,):
         super().__init__(grant_type=grant_type, username=username, password=password, scope=scope, client_id=client_id, client_secret=client_secret)
+        print(remember)
         self.remember = remember
 
 
