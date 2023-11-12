@@ -398,7 +398,7 @@ class DockerRunner(ContainerRunner):
 
         for tag in tags:
             name, version = tag.split(':')
-            image_info_list.append(ImageInfo(name=name, version=version, ports=ports))
+            image_info_list.append(ImageInfo(name=name, version=version, ports=set(ports)))
 
         return image_info_list
 

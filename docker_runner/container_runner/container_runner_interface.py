@@ -31,7 +31,7 @@ class Port(BaseModel):
 class ImageInfo(BaseModel):
     name: str
     version: str
-    ports: list[Port] = Field(default_factory=list)
+    ports: set[Port] = Field(default_factory=set)
 
     @computed_field()
     @property
@@ -45,7 +45,7 @@ class ServerInfo(BaseModel):
     image: ImageInfo
     on: bool
     domain: Optional[str] = None
-    ports: Optional[list[Port]] = None
+    ports: Optional[set[Port]] = None
 
 class FileBrowserInfo(BaseModel):
     id_: str

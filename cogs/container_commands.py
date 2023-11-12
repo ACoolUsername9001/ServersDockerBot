@@ -10,7 +10,7 @@ from discord.app_commands import Choice
 from discord.ext import commands
 from docker_runner.docker_runner import DockerRunner
 from docker_runner.container_runner.container_runner_interface import ContainerRunner, ImageInfo, Port, PortProtocol, ServerInfo
-from docker_runner.upnp_wrapper import UPNPWrapper
+from docker_runner.upnp_wrapper import UpnpClient
 
 MAX_MESSAGE_SIZE = 2000
 
@@ -22,6 +22,7 @@ class ContainerCommands(commands.Cog):
         self.container_runner = container_runner
         self.bot = bot
         self._main_domain = main_domain
+        self._upnp = UpnpClient()
         super().__init__(**kwargs)
 
     @app_commands.command(name='create', description='This will create a new minecraft server')
@@ -256,4 +257,4 @@ class ContainerCommands(commands.Cog):
 
 
 async def setup(bot: commands.Bot, domain: str, cert_path: str, key_path: str):
-    await bot.add_cog(ContainerCommands(bot=bot, main_domain=domain, container_runner=UPNPWrapper(DockerRunner(cert_path=cert_path, key_path=key_path))))
+    await bot.add_cog(ContainerCommands(bot=bot, main_domain=domain, ))
