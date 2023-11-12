@@ -8,7 +8,7 @@ import discord
 from discord import app_commands, Interaction
 from discord.app_commands import Choice
 from discord.ext import commands
-from docker_runner.docker_runner import DockerRunner
+from docker_runner.docker_runner import DOMAIN, DockerRunner
 from docker_runner.container_runner.container_runner_interface import ContainerRunner, ImageInfo, Port, PortProtocol, ServerInfo
 from docker_runner.upnp_wrapper import UpnpClient
 
@@ -16,9 +16,9 @@ MAX_MESSAGE_SIZE = 2000
 
 
 class ContainerCommands(commands.Cog):
-    def __init__(self, bot: commands.Bot, container_runner: Optional[ContainerRunner] = None, main_domain: Optional[str] = None, **kwargs):
+    def __init__(self, bot: commands.Bot, container_runner: Optional[ContainerRunner] = None, main_domain: str = DOMAIN, **kwargs):
         if not container_runner:
-            container_runner = DockerRunner()
+            container_runner = DockerRunner(domain=main_domain)
         self.container_runner = container_runner
         self.bot = bot
         self._main_domain = main_domain
@@ -155,6 +155,9 @@ class ContainerCommands(commands.Cog):
         if server_info.ports is None:
             await interaction.response.send_message('Failed to get server ports')
             return
+        
+        self._upnp.add_port_mapping_using_server_info(server_info=server_info)
+        
         available_access_points = {f'{self._main_domain}:{port.number}/{port.protocol.value}' for port in server_info.ports}
 
         await interaction.response.send_message(f'Starting {await self.format_display_name(server_info)} on port(s): {", ".join(available_access_points)}')
