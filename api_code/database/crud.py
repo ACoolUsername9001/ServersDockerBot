@@ -32,6 +32,11 @@ def create_user(db: Session, user: models.User):
     return models.User.from_database_user(db_user)
 
 
+def delete_user(db: Session, username: str):
+    db.query(models.DatabaseUser).filter(models.DatabaseUser.username == username).delete()
+    db.commit()
+
+
 def create_user_from_token(db: Session, token: str, username: str, password_hash: str):
     token_item = get_token(db, token)
     if token_item is None:

@@ -10,7 +10,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from api_code.database import models
-from api_code.database.crud import create_token, create_user, create_user_from_token, get_user, get_users as get_all_users
+from api_code.database.crud import create_token, create_user, create_user_from_token, delete_user, get_user, get_users as get_all_users
 from api_code.database.database import engine, SessionLocal
 from docker_runner.docker_runner import DockerRunner
 from docker_runner.container_runner.container_runner_interface import FileBrowserInfo, ServerInfo, Port, ImageInfo
@@ -210,6 +210,12 @@ def create_user_api(token: str, request: CreateUserRequest) -> models.UserBase:
         return create_user_from_token(db, token=token, username=request.username, password_hash=get_password_hash(request.password))
 
 
+@app.delete('/users/{username}')
+def delete_user_api(user: Annotated[models.User, Depends(user_with_permissions(models.Permission.ADMIN))], username: str):
+    with get_db() as db:
+        delete_user(db, username=username)
+
+
 @app.get('/servers')
 def get_servers(user: Annotated[models.User, Depends(user_data)]) -> list[ServerInfo]:
     docker_runner = DockerRunner()
@@ -310,15 +316,7 @@ def get_file_browsers(user: Annotated[models.User, Depends(user_data)]) -> list[
     return docker_runner.list_file_browser_servers(user_id=user.username)
 
 
-class StopFileBrowserRequest(BaseModel):
-    server_id: str
-
-
 @app.delete('/browsers')
-def stop_file_browser(user: Annotated[models.User, Depends(user_data)], stop_file_browser_request: StopFileBrowserRequest):
+def stop_file_browser(user: Annotated[models.User, Depends(user_data)], server_id: str):
     docker_runner = DockerRunner()
-    docker_runner.stop_file_browsing(user_id=user.username, server_id=stop_file_browser_request.server_id)
-
-
-@app.delete('/users/{user_id}')
-def delete_user()
+    docker_runner.stop_file_browsing(user_id=user.username, server_id=server_id)

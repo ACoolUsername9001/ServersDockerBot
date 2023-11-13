@@ -87,7 +87,12 @@ class DockerRunner(ContainerRunner):
         if not docker_client:
             docker_client = docker.from_env()
         self.docker = docker_client
-        self.docker.images.pull(repository=filebrowser_repository)
+        
+        try:
+            self.docker.images.get(filebrowser_repository)
+        except Exception as e:
+            self.docker.images.pull(repository=filebrowser_repository)
+
         self._filebrowser_image = filebrowser_repository
         self._cert_path = cert_path
         self._key_path = key_path
