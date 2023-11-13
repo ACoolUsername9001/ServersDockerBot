@@ -10,7 +10,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from api_code.database import models
-from api_code.database.crud import create_token, create_user, create_user_from_token, delete_user, get_user, get_users as get_all_users
+from api_code.database.crud import change_permissions, create_token, create_user, create_user_from_token, delete_user, get_user, get_users as get_all_users
 from api_code.database.database import engine, SessionLocal
 from docker_runner.docker_runner import DockerRunner
 from docker_runner.container_runner.container_runner_interface import FileBrowserInfo, ServerInfo, Port, ImageInfo
@@ -204,8 +204,8 @@ class CreateUserRequest(BaseModel):
     password: str
 
 
-@app.post('/users/signup')
-def create_user_api(token: str, request: CreateUserRequest) -> models.UserBase:
+@app.post('/signup')
+def sign_up(token: str, request: CreateUserRequest) -> models.UserBase:
     with get_db() as db:
         return create_user_from_token(db, token=token, username=request.username, password_hash=get_password_hash(request.password))
 
@@ -214,6 +214,16 @@ def create_user_api(token: str, request: CreateUserRequest) -> models.UserBase:
 def delete_user_api(user: Annotated[models.User, Depends(user_with_permissions(models.Permission.ADMIN))], username: str):
     with get_db() as db:
         delete_user(db, username=username)
+
+
+class ChangeUserRequest(BaseModel):
+    permissions: list[models.Permission]
+
+
+@app.post('/users/{username}')
+def change_user_data(user: Annotated[models.User, Depends(user_with_permissions(models.Permission.ADMIN))], username: str, request: ChangeUserRequest):
+    with get_db() as db:
+        change_permissions(db, username, request.permissions)
 
 
 @app.get('/servers')

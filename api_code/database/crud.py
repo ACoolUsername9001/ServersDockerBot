@@ -37,6 +37,17 @@ def delete_user(db: Session, username: str):
     db.commit()
 
 
+def change_permissions(db: Session, username: str, permissions: list[models.Permission]):
+    db_user = db.query(models.DatabaseUser).filter(models.DatabaseUser.username == username).first()
+    if db_user is None:
+        return
+    
+    new_user = models.DatabaseUser(email=db_user.email, password_hash=db_user.password_hash, username=db_user.username, scope=':'.join(permissions))
+    db.refresh(new_user)
+    db.commit()
+    return models.UserBase.from_database_user(new_user)
+
+
 def create_user_from_token(db: Session, token: str, username: str, password_hash: str):
     token_item = get_token(db, token)
     if token_item is None:
