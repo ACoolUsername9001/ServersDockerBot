@@ -210,7 +210,7 @@ def sign_up(token: str, request: CreateUserRequest) -> models.UserBase:
         return create_user_from_token(db, token=token, username=request.username, password_hash=get_password_hash(request.password))
 
 
-@app.delete('/users/{username}')
+@app.delete('/users/{username}', name='Delete')
 def delete_user_api(user: Annotated[models.User, Depends(user_with_permissions(models.Permission.ADMIN))], username: str):
     with get_db() as db:
         delete_user(db, username=username)
@@ -220,7 +220,7 @@ class ChangeUserRequest(BaseModel):
     permissions: list[models.Permission]
 
 
-@app.post('/users/{username}')
+@app.post('/users/{username}', name='Change Permissions')
 def change_user_data(user: Annotated[models.User, Depends(user_with_permissions(models.Permission.ADMIN))], username: str, request: ChangeUserRequest):
     with get_db() as db:
         change_permissions(db, username, request.permissions)
