@@ -14,7 +14,6 @@ class Permission(str, Enum):
     START = 'start'
     BROWSE = 'browse'
     RUN_COMMAND = 'run-command'
-    SEE_ALL = 'see-all'
     DELETE = 'delete'
     STOP = 'stop'
     ADMIN = 'admin'

@@ -235,7 +235,7 @@ class StartServerRequest(BaseModel):
     command: Optional[str] = None
 
 @app.post('/servers/{server_id}/start', summary='Start')
-def start_server(user: Annotated[models.User, Depends(user_data)], server_id: str, request: StartServerRequest) -> ServerInfo:
+def start_server(user: Annotated[models.User, Depends(user_with_permissions(models.Permission.START))], server_id: str, request: StartServerRequest) -> ServerInfo:
     docker_runner = DockerRunner()
     server_info = docker_runner.start_game_server(server_id=server_id, ports={mapping.source_port: mapping.destination_port for mapping in request.ports} if len(request.ports) > 0 else None, command_parameters=request.command,)
     UpnpClient().add_port_mapping_using_server_info(server_info=server_info)
@@ -243,7 +243,7 @@ def start_server(user: Annotated[models.User, Depends(user_data)], server_id: st
 
 
 @app.post('/servers/{server_id}/stop', summary='Stop')
-def stop_server(user: Annotated[models.User, Depends(user_data)], server_id: str) -> ServerInfo:
+def stop_server(user: Annotated[models.User, Depends(user_with_permissions(models.Permission.STOP))], server_id: str) -> ServerInfo:
     docker_runner = DockerRunner()
     return docker_runner.stop_game_server(server_id=server_id)
 
@@ -259,7 +259,7 @@ def create_server(user: Annotated[models.User, Depends(user_with_permissions(mod
 
 
 @app.delete('/servers/{server_id}')
-def delete_server(user: Annotated[models.User, Depends(user_data)], server_id: str) -> None:
+def delete_server(user: Annotated[models.User, Depends(user_with_permissions(models.Permission.DELETE))], server_id: str) -> None:
     docker_runner = DockerRunner()
     return docker_runner.delete_game_server(server_id=server_id)
 
@@ -268,7 +268,7 @@ class RunCommandRequest(BaseModel):
     command: str
 
 @app.post('/servers/{server_id}/command')
-def run_command(user: Annotated[models.User, Depends(user_data)], server_id: str, request: RunCommandRequest) -> str:
+def run_command(user: Annotated[models.User, Depends(user_with_permissions(models.Permission.RUN_COMMAND))], server_id: str, request: RunCommandRequest) -> str:
     if models.Permission.RUN_COMMAND not in user.permissions and models.Permission.ADMIN not in user.permissions:
         raise HTTPException(401, 'Unauthorized')
     docker_runner = DockerRunner()
@@ -298,7 +298,7 @@ class StartFileBrowserRequest(BaseModel):
 
 
 @app.post('/browsers')
-def start_file_browser(user: Annotated[models.User, Depends(user_data)], server_id: StartFileBrowserRequest) -> FileBrowserData:
+def start_file_browser(user: Annotated[models.User, Depends(user_with_permissions(models.Permission.BROWSE))], server_id: StartFileBrowserRequest) -> FileBrowserData:
     docker_runner = DockerRunner()
     file_browser_server_info = docker_runner.start_file_browser(server_id=server_id.server_id, owner_id=user.username, hashed_password=user.password_hash)
     return FileBrowserData(url=file_browser_server_info.url)
@@ -318,3 +318,7 @@ class StopFileBrowserRequest(BaseModel):
 def stop_file_browser(user: Annotated[models.User, Depends(user_data)], stop_file_browser_request: StopFileBrowserRequest):
     docker_runner = DockerRunner()
     docker_runner.stop_file_browsing(user_id=user.username, server_id=stop_file_browser_request.server_id)
+
+
+@app.delete('/users/{user_id}')
+def delete_user()
