@@ -70,3 +70,30 @@ def create_token(db: Session, token: models.SignupToken):
     db.commit()
     db.refresh(db_signup)
     return models.SignupToken.from_database_token(db_signup)
+
+
+def change_server_nickname(db: Session, server_nickname: models.ServerNickname) -> models.ServerNickname:
+    db_server_nickname = models.DatabaseServerNickname(server_id=server_nickname.server_id, nickname=server_nickname.nickname)
+    db.query(models.DatabaseServerNickname).filter(models.DatabaseServerNickname.server_id == server_nickname.server_id).delete()
+    db.add(db_server_nickname)
+    db.commit()
+    db.refresh(db_server_nickname)
+    return models.ServerNickname.from_database_nickname(db_server_nickname)
+
+
+def get_server_nickname(db: Session, server_id: str) -> str:
+    db_server_nickname = db.query(models.DatabaseServerNickname).filter(models.DatabaseServerNickname.server_id == server_id).first()
+    return db_server_nickname.nickname
+
+
+def get_all_server_nicknames(db: Session) -> dict[str, str]:
+    return {db_server_nickname.server_id: db_server_nickname.nickname for db_server_nickname in db.query(models.DatabaseServerNickname).all()}
+
+
+def set_server_permissions_for_user(db: Session, server_permissions: models.ServerPermissions):
+    db_server_permissiosn = models.DatabasePermissions(server_id=server_permissions.server_id, user_id=server_permissions.user_id, scope=','.join(server_permissions.permissions))
+    db.query(models.DatabaseServerNickname).filter(models.DatabaseServerNickname.server_id == server_permissions.server_id).delete()
+    db.add(db_server_permissiosn)
+    db.commit()
+    db.refresh(db_server_permissiosn)
+    return models.ServerPermissions.from_database_permissions(db_server_permissiosn)

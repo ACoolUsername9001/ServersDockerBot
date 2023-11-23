@@ -1,16 +1,18 @@
 from contextlib import contextmanager
 from datetime import datetime, timedelta
+from functools import wraps
 import json
+from readline import set_completer_delims
 from typing_extensions import Annotated
 from uuid import uuid4
 from sqlalchemy.orm import Session
-from typing import Annotated, Any, Optional
+from typing import Annotated, Any, Callable, Concatenate, Optional, ParamSpec
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from api_code.database import models
-from api_code.database.crud import change_permissions, create_token, create_user, create_user_from_token, delete_user, get_user, get_users as get_all_users
+from api_code.database.crud import change_permissions, change_server_nickname, create_token, create_user, create_user_from_token, delete_user, get_all_server_nicknames, get_user, get_users as get_all_users
 from api_code.database.database import engine, SessionLocal
 from docker_runner.docker_runner import DockerRunner
 from docker_runner.container_runner.container_runner_interface import FileBrowserInfo, ServerInfo, Port, ImageInfo
@@ -174,6 +176,26 @@ def user_with_permissions(*permissions: models.Permission):
         return user
     return user_with_permissions_inner
 
+def server_owner_or_permissions(*permissions):
+    def func_wrapper[**P, T](func: Callable[Concatenate[models.User, str, P], T]) -> Callable[Concatenate[models.User, str, P], T]:
+        
+        @wraps(func)
+        def users_with_permissions_or_owner(user: Annotated[models.User, Depends(user_data)], server_id: str, *args: P.args, **kwargs: P.kwargs):
+            server_info = DockerRunner().get_server_info(server_id=server_id)
+
+            if set(permissions) - set(user.permissions) and models.Permission.ADMIN not in user.permissions and not server_info.user_id == user.username:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Could not validate credentials",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+
+            return func(user, server_id, *args, **kwargs)
+
+        return users_with_permissions_or_owner
+    return func_wrapper
+
+
 
 @app.get('/users')
 def get_users(user: Annotated[models.User, Depends(user_data)]) -> list[models.UserBase]:
@@ -229,7 +251,14 @@ def change_user_data(user: Annotated[models.User, Depends(user_with_permissions(
 @app.get('/servers')
 def get_servers(user: Annotated[models.User, Depends(user_data)]) -> list[ServerInfo]:
     docker_runner = DockerRunner()
-    return sorted(docker_runner.list_servers(), key=lambda x: x.id_)
+    servers = docker_runner.list_servers()
+    with get_db() as db:
+        nicknames = get_all_server_nicknames(db)
+
+    for server in servers:
+        server.nickname = nicknames.get(server.id_)
+
+    return sorted(servers, key=lambda x: x.id_)
 
 @app.get('/images')
 def get_images(user: Annotated[models.User, Depends(user_data)]) -> list[ImageInfo]:
@@ -330,3 +359,14 @@ def get_file_browsers(user: Annotated[models.User, Depends(user_data)]) -> list[
 def stop_file_browser(user: Annotated[models.User, Depends(user_data)], server_id: str):
     docker_runner = DockerRunner()
     docker_runner.stop_file_browsing(user_id=user.username, server_id=server_id)
+
+
+class SetServerNicknameRequest(BaseModel):
+    nickname: str
+
+
+@app.post('/servers/{server_id}/nickname', summary='Set Nickname', description='Set Nickname')
+@server_owner_or_permissions(models.Permission.ADMIN)
+def api_set_server_nickname(user: models.User, server_id: str, /, set_server_nickname_request: SetServerNicknameRequest):
+    with get_db() as db:
+        return change_server_nickname(db, server_nickname=models.ServerNickname(server_id=server_id, nickname=set_server_nickname_request.nickname))

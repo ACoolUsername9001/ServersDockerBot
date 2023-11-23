@@ -77,3 +77,41 @@ class SignupToken(BaseModel):
             permissions=permissions,
             token=database_token.token,
         )
+    
+class DatabaseServerNickname(Base):
+    __tablename__ = 'server_nicknames'
+    server_id = Column(String, index=True, unique=True, primary_key=True)
+    nickname = Column(String, index=True, unique=True)
+
+class DatabasePermissions(Base):
+    __tablename__ = 'server_permissions'
+    index = Column(Integer, index=True, unique=True, autoincrement=True, primary_key=True)
+    server_id = Column(String, index=True)
+    user_id = Column(String, index=True)
+    scope = Column(String)
+
+
+class ServerNickname(BaseModel):
+    server_id: str
+    nickname: str
+
+    @classmethod
+    def from_database_nickname(cls, database_nickname: DatabaseServerNickname) -> Self:
+        return cls(
+            server_id=database_nickname.server_id,
+            nickname=database_nickname.nickname,
+        )
+
+class ServerPermissions(BaseModel):
+    server_id: str
+    user_id: str
+    permissions: list[Permission]
+
+    @classmethod
+    def from_database_permissions(cls, database_permissions: DatabasePermissions) -> Self:
+        permissions = database_permissions.scope.split(':')
+        return cls(
+            server_id=database_permissions.server_id,
+            user_id=database_permissions.user_id,
+            permissions=permissions,
+        )
