@@ -46,6 +46,8 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 class JsonSchemaExtra(BaseModel):
     fetch_url: str
+    fetch_key_path: str
+    fetch_display_path: str
 
 oauth2_password_scheme = HTTPBearer()
 
@@ -349,7 +351,7 @@ class FileBrowserData(BaseModel):
 
 
 class StartFileBrowserRequest(BaseModel):
-    server_id: str = Field(json_schema_extra=JsonSchemaExtra(fetch_url='/servers').model_dump())
+    server_id: str = Field(json_schema_extra=JsonSchemaExtra(fetch_url='/servers', fetch_key_path='id_', fetch_display_path='nickname').model_dump())
 
 
 @app.post('/browsers')
@@ -365,7 +367,7 @@ def get_file_browsers(user: Annotated[models.User, Depends(user_data)]) -> list[
     return docker_runner.list_file_browser_servers(user_id=user.username)
 
 class StopFileBrowserRequest(BaseModel):
-    server_id: str = Field(json_schema_extra=JsonSchemaExtra(fetch_url='/servers').model_dump())
+    server_id: str = Field(json_schema_extra=JsonSchemaExtra(fetch_url='/servers', fetch_key_path='id_', fetch_display_path='nickname').model_dump())
 
 @app.delete('/browsers')
 def stop_file_browser(user: Annotated[models.User, Depends(user_data)], server_id: StopFileBrowserRequest):
@@ -386,7 +388,7 @@ def api_set_server_nickname(user: Annotated[models.User, Depends(user_with_permi
 
 
 class SetServerPermissionsRequest(BaseModel):
-    username: str = Field(json_schema_extra=JsonSchemaExtra(fetch_url='/users').model_dump())
+    username: str = Field(json_schema_extra=JsonSchemaExtra(fetch_url='/users', fetch_key_path='username', fetch_display_path='username').model_dump())
     permissions: list[models.Permission] = Field(default_factory=list)
 
 
