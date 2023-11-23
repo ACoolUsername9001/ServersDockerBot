@@ -46,6 +46,7 @@ class ServerInfo(BaseModel):
     on: bool
     domain: Optional[str] = None
     ports: Optional[set[Port]] = None
+    nickname: Optional[str] = None
 
 class FileBrowserInfo(BaseModel):
     id_: str
