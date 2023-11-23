@@ -2,18 +2,16 @@ from contextlib import contextmanager
 from datetime import datetime, timedelta
 from functools import wraps
 import json
-import logging
-from readline import set_completer_delims
 from typing_extensions import Annotated
 from uuid import uuid4
 from sqlalchemy.orm import Session
-from typing import Annotated, Any, Callable, Concatenate, Optional, ParamSpec
+from typing import Annotated, Optional
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from api_code.database import models
-from api_code.database.crud import change_permissions, change_server_nickname, create_token, create_user, create_user_from_token, delete_user, get_all_server_nicknames, get_user, get_users as get_all_users
+from api_code.database.crud import change_permissions, change_server_nickname, create_token, create_user, create_user_from_token, delete_user, get_all_server_nicknames, get_server_permissions_for_user, get_user, get_users as get_all_users, set_server_permissions_for_user
 from api_code.database.database import engine, SessionLocal
 from docker_runner.docker_runner import DockerRunner
 from docker_runner.container_runner.container_runner_interface import FileBrowserInfo, ServerInfo, Port, ImageInfo
@@ -46,6 +44,8 @@ with open('credentials.json', 'r') as f:
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+class JsonSchemaExtra(BaseModel):
+    fetch_url: str
 
 oauth2_password_scheme = HTTPBearer()
 
@@ -167,8 +167,10 @@ async def login_for_access_token(
 
 
 def user_with_permissions(*permissions):        
-    def users_with_permissions_or_owner(user: Annotated[models.User, Depends(user_data)], server_id: Optional[str] = None) -> models.User:
-        permissions_allowed = len(set(permissions) - set(user.permissions)) == 0 or models.Permission.ADMIN in user.permissions
+
+    def users_with_permissions_or_owner(db: Annotated[Session, Depends(get_db)], user: Annotated[models.User, Depends(user_data)], server_id: Optional[str] = None) -> models.User:
+        missing_permissions = set(permissions) - set(user.permissions)
+        permissions_allowed = len(missing_permissions) == 0 or models.Permission.ADMIN in user.permissions
         
         if permissions_allowed:
             return user
@@ -179,6 +181,17 @@ def user_with_permissions(*permissions):
                 detail="Could not validate credentials",
                 headers={"WWW-Authenticate": "Bearer"},
             )
+        
+        server_permissions = get_server_permissions_for_user(db, server_id=server_id, user_id=user.username)
+        if not server_permissions:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        if len(missing_permissions - set(server_permissions.permissions)) == 0:
+            return user
 
         server_info = DockerRunner().get_server_info(server_id=server_id)
 
@@ -336,7 +349,7 @@ class FileBrowserData(BaseModel):
 
 
 class StartFileBrowserRequest(BaseModel):
-    server_id: str
+    server_id: str = Field(json_schema_extra=JsonSchemaExtra(fetch_url='/servers').model_dump())
 
 
 @app.post('/browsers')
@@ -352,7 +365,7 @@ def get_file_browsers(user: Annotated[models.User, Depends(user_data)]) -> list[
     return docker_runner.list_file_browser_servers(user_id=user.username)
 
 class StopFileBrowserRequest(BaseModel):
-    server_id: str
+    server_id: str = Field(json_schema_extra=JsonSchemaExtra(fetch_url='/servers').model_dump())
 
 @app.delete('/browsers')
 def stop_file_browser(user: Annotated[models.User, Depends(user_data)], server_id: StopFileBrowserRequest):
@@ -366,5 +379,18 @@ class SetServerNicknameRequest(BaseModel):
 
 @app.post('/servers/{server_id}/nickname', summary='Set Nickname', description='Set Nickname')
 def api_set_server_nickname(user: Annotated[models.User, Depends(user_with_permissions(models.Permission.ADMIN))], server_id: str, set_server_nickname_request: SetServerNicknameRequest):
+    DockerRunner().get_server_info(server_id=server_id)
+
     with get_db() as db:
         return change_server_nickname(db, server_nickname=models.ServerNickname(server_id=server_id, nickname=set_server_nickname_request.nickname))
+
+
+class SetServerPermissionsRequest(BaseModel):
+    username: str = Field(json_schema_extra=JsonSchemaExtra(fetch_url='/users').model_dump())
+    permissions: list[models.Permission] = Field(default_factory=list)
+
+
+@app.post('/servers/{server_id}/permissions', summary='Add Permissions')
+def api_set_server_user_permissions(db: Annotated[Session, Depends(get_db)], user: Annotated[models.User, Depends(user_with_permissions(models.Permission.ADMIN))], server_id: str, request: SetServerPermissionsRequest):
+    DockerRunner().get_server_info(server_id=server_id)
+    set_server_permissions_for_user(db, models.ServerPermissions(server_id=server_id, user_id=user.username, permissions=request.permissions))
