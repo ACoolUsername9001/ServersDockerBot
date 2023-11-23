@@ -2,6 +2,7 @@ from contextlib import contextmanager
 from datetime import datetime, timedelta
 from functools import wraps
 import json
+import logging
 from readline import set_completer_delims
 from typing_extensions import Annotated
 from uuid import uuid4
@@ -165,36 +166,32 @@ async def login_for_access_token(
     return Token(access_token=access_token, token_type="bearer")
 
 
-def user_with_permissions(*permissions: models.Permission):
-    def user_with_permissions_inner(user: Annotated[models.User, Depends(user_data)]):
-        if set(permissions) - set(user.permissions) and models.Permission.ADMIN not in user.permissions:
+def user_with_permissions(*permissions):        
+    def users_with_permissions_or_owner(user: Annotated[models.User, Depends(user_data)], server_id: Optional[str] = None) -> models.User:
+        permissions_allowed = len(set(permissions) - set(user.permissions)) == 0 or models.Permission.ADMIN in user.permissions
+        
+        if permissions_allowed:
+            return user
+        
+        if not server_id:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Could not validate credentials",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-        return user
-    return user_with_permissions_inner
 
-def server_owner_or_permissions(*permissions):
-    def func_wrapper[**P, T](func: Callable[Concatenate[models.User, str, P], T]) -> Callable[Concatenate[models.User, str, P], T]:
+        server_info = DockerRunner().get_server_info(server_id=server_id)
+
+        if server_info.user_id != user.username:    
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
         
-        @wraps(func)
-        def users_with_permissions_or_owner(user: Annotated[models.User, Depends(user_data)], server_id: str, *args: P.args, **kwargs: P.kwargs):
-            server_info = DockerRunner().get_server_info(server_id=server_id)
+        return user
 
-            if set(permissions) - set(user.permissions) and models.Permission.ADMIN not in user.permissions and not server_info.user_id == user.username:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Could not validate credentials",
-                    headers={"WWW-Authenticate": "Bearer"},
-                )
-
-            return func(user, server_id, *args, **kwargs)
-
-        return users_with_permissions_or_owner
-    return func_wrapper
-
+    return users_with_permissions_or_owner
 
 
 @app.get('/users')
@@ -368,8 +365,6 @@ class SetServerNicknameRequest(BaseModel):
 
 
 @app.post('/servers/{server_id}/nickname', summary='Set Nickname', description='Set Nickname')
-@server_owner_or_permissions(models.Permission.ADMIN)
-def api_set_server_nickname(user: models.User, server_id: str, /, set_server_nickname_request: SetServerNicknameRequest):
+def api_set_server_nickname(user: Annotated[models.User, Depends(user_with_permissions(models.Permission.ADMIN))], server_id: str, set_server_nickname_request: SetServerNicknameRequest):
     with get_db() as db:
         return change_server_nickname(db, server_nickname=models.ServerNickname(server_id=server_id, nickname=set_server_nickname_request.nickname))
-
