@@ -5,7 +5,7 @@ import json
 from typing_extensions import Annotated
 from uuid import uuid4
 from sqlalchemy.orm import Session
-from typing import Annotated, Optional
+from typing import Annotated, Literal, Optional
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.middleware.cors import CORSMiddleware
@@ -48,6 +48,7 @@ class JsonSchemaExtra(BaseModel):
     fetch_url: str
     fetch_key_path: str
     fetch_display_path: str
+    type: Literal['fetched'] = 'fetched'
 
 oauth2_password_scheme = HTTPBearer()
 
@@ -335,7 +336,7 @@ def run_command(user: Annotated[models.User, Depends(user_with_permissions(model
     return response
 
 
-@app.get('/servers/{server_id}/logs')
+@app.get('/servers/{server_id}/logs', include_in_schema=False)
 def get_server_logs(user: Annotated[models.User, Depends(user_data)], server_id: str) -> str:
     docker_runner = DockerRunner()
     response = docker_runner.get_server_logs(server_id=server_id)
