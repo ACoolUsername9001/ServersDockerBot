@@ -48,7 +48,6 @@ class JsonSchemaExtra(BaseModel):
     fetch_url: str
     fetch_key_path: str
     fetch_display_path: str
-    id_: Literal['fetched'] = Field(default='fetched', alias='$id')
 
 oauth2_password_scheme = HTTPBearer()
 
@@ -394,6 +393,7 @@ class SetServerPermissionsRequest(BaseModel):
 
 
 @app.post('/servers/{server_id}/permissions', summary='Add Permissions')
-def api_set_server_user_permissions(db: Annotated[Session, Depends(get_db)], user: Annotated[models.User, Depends(user_with_permissions(models.Permission.ADMIN))], server_id: str, request: SetServerPermissionsRequest):
+def api_set_server_user_permissions(user: Annotated[models.User, Depends(user_with_permissions(models.Permission.ADMIN))], server_id: str, request: SetServerPermissionsRequest):
     DockerRunner().get_server_info(server_id=server_id)
-    set_server_permissions_for_user(db, models.ServerPermissions(server_id=server_id, user_id=user.username, permissions=request.permissions))
+    with get_db() as db:
+        set_server_permissions_for_user(db, models.ServerPermissions(server_id=server_id, user_id=user.username, permissions=request.permissions))
