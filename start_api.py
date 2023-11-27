@@ -170,7 +170,7 @@ async def login_for_access_token(
 
 def user_with_permissions(*permissions):        
 
-    def users_with_permissions_or_owner(db: Annotated[Session, Depends(get_db)], user: Annotated[models.User, Depends(user_data)], server_id: Optional[str] = None) -> models.User:
+    def users_with_permissions_or_owner(user: Annotated[models.User, Depends(user_data)], server_id: Optional[str] = None) -> models.User:
         missing_permissions = set(permissions) - set(user.permissions)
         permissions_allowed = len(missing_permissions) == 0 or models.Permission.ADMIN in user.permissions
         
@@ -183,8 +183,9 @@ def user_with_permissions(*permissions):
                 detail="Could not validate credentials",
                 headers={"WWW-Authenticate": "Bearer"},
             )
+        with get_db() as db:
+            server_permissions = get_server_permissions_for_user(db, server_id=server_id, user_id=user.username)
         
-        server_permissions = get_server_permissions_for_user(db, server_id=server_id, user_id=user.username)
         if not server_permissions:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
