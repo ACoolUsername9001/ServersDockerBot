@@ -23,6 +23,7 @@ class UserBase(BaseModel):
     username: str
     email: str
     permissions: list[Permission]
+    allowed_servers: int = 5
 
     @classmethod
     def from_database_user(cls, database_user: 'DatabaseUser') -> Self:
@@ -31,6 +32,7 @@ class UserBase(BaseModel):
             username=database_user.username,
             email=database_user.email,
             permissions=permissions,
+            allowed_servers=database_user.allowed_servers,
         )
 
 
@@ -43,7 +45,8 @@ class User(UserBase):
             username=database_user.username,
             email=database_user.email,
             permissions=permissions,
-            password_hash = database_user.password_hash,
+            password_hash=database_user.password_hash,
+            allowed_servers=database_user.allowed_servers,
         )
 
 
@@ -54,6 +57,7 @@ class DatabaseUser(Base):
     email = Column(String, unique=True, index=True)
     password_hash = Column(String)
     scope = Column(String)
+    allowed_servers=Column(Integer, default=5)
     
 
 class DatabaseSignupToken(Base):

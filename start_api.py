@@ -192,7 +192,7 @@ def user_with_permissions(*permissions):
                 headers={"WWW-Authenticate": "Bearer"},
             )
         
-        if len(missing_permissions - set(server_permissions.permissions)) == 0:
+        if len(missing_permissions - set(server_permissions.permissions)) == 0 or models.Permission.ADMIN in server_permissions.permissions:
             return user
 
         server_info = DockerRunner().get_server_info(server_id=server_id)
@@ -238,6 +238,11 @@ class CreateUserRequest(BaseModel):
     password: str
 
 
+@app.get('/users/@me')
+def get_self(user: Annotated[models.User, Depends(user_with_permissions(models.Permission.ADMIN))]) -> models.UserBase:
+    return user
+
+
 @app.post('/signup')
 def sign_up(token: str, request: CreateUserRequest) -> models.UserBase:
     with get_db() as db:
@@ -254,7 +259,7 @@ class ChangeUserRequest(BaseModel):
     permissions: list[models.Permission]
 
 
-@app.post('/users/{username}', name='Change Permissions')
+@app.post('/users/{username}/permissions', name='Change Permissions')
 def change_user_data(user: Annotated[models.User, Depends(user_with_permissions(models.Permission.ADMIN))], username: str, request: ChangeUserRequest):
     with get_db() as db:
         change_permissions(db, username, request.permissions)
