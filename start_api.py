@@ -6,7 +6,7 @@ import logging
 from typing_extensions import Annotated
 from uuid import uuid4
 from sqlalchemy.orm import Session
-from typing import Annotated, Literal, Optional
+from typing import Annotated, Literal, Optional, cast
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.middleware.cors import CORSMiddleware
@@ -45,10 +45,16 @@ with open('credentials.json', 'r') as f:
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-class JsonSchemaExtra(BaseModel):
+class JsonSchemaExtraRequest(BaseModel):
     fetch_url: str
     fetch_key_path: str
     fetch_display_path: str
+
+
+class OpenApiExtra(BaseModel):
+    api_response: Literal['Ignore', 'Browse'] = 'Ignore'
+    permissions_required: list[models.Permission] = Field(default_factory=list)
+
 
 oauth2_password_scheme = HTTPBearer()
 
@@ -215,7 +221,7 @@ def user_with_permissions(*permissions):
 @app.get('/users')
 def get_users(user: Annotated[models.User, Depends(user_data)]) -> list[models.UserBase]:
     with get_db() as db:
-        return get_all_users(db)
+        return cast(list[models.UserBase], get_all_users(db))
 
 
 class InviteUserRequests(BaseModel):
@@ -223,7 +229,7 @@ class InviteUserRequests(BaseModel):
     permissions: list[models.Permission]
 
 
-@app.post('/users')
+@app.post('/users', openapi_extra=OpenApiExtra(api_response='Ignore', permissions_required=[models.Permission.ADMIN]).model_dump(mode='json'))
 def invite_user_api(user: Annotated[models.User, Depends(user_with_permissions(models.Permission.ADMIN))], request: InviteUserRequests) -> InviteUserRequests:
     token_str = f'{uuid4()}'
     with get_db() as db:
@@ -252,7 +258,7 @@ def sign_up(token: str, request: CreateUserRequest) -> models.UserBase:
         return create_user_from_token(db, token=token, username=request.username, password_hash=get_password_hash(request.password))
 
 
-@app.delete('/users/{username}', name='Delete')
+@app.delete('/users/{username}', name='Delete', openapi_extra=OpenApiExtra(api_response='Ignore', permissions_required=[models.Permission.ADMIN]).model_dump(mode='json'))
 def delete_user_api(user: Annotated[models.User, Depends(user_with_permissions(models.Permission.ADMIN))], username: str):
     with get_db() as db:
         delete_user(db, username=username)
@@ -262,7 +268,7 @@ class ChangeUserRequest(BaseModel):
     permissions: list[models.Permission]
 
 
-@app.post('/users/{username}/permissions', name='Change Permissions')
+@app.post('/users/{username}/permissions', name='Change Permissions', openapi_extra=OpenApiExtra(api_response='Ignore', permissions_required=[models.Permission.ADMIN]).model_dump(mode='json'))
 def change_user_data(user: Annotated[models.User, Depends(user_with_permissions(models.Permission.ADMIN))], username: str, request: ChangeUserRequest):
     with get_db() as db:
         change_permissions(db, username, request.permissions)
@@ -299,7 +305,7 @@ class StartServerRequest(BaseModel):
     ports: list[PortMapping] = []
     command: Optional[str] = None
 
-@app.post('/servers/{server_id}/start', summary='Start')
+@app.post('/servers/{server_id}/start', summary='Start', openapi_extra=OpenApiExtra(api_response='Ignore', permissions_required=[models.Permission.START]).model_dump(mode='json'))
 def start_server(user: Annotated[models.User, Depends(user_with_permissions(models.Permission.START))], server_id: str, request: StartServerRequest) -> ServerInfo:
     docker_runner = DockerRunner()
     server_info = docker_runner.start_game_server(server_id=server_id, ports={mapping.source_port: mapping.destination_port for mapping in request.ports} if len(request.ports) > 0 else None, command_parameters=request.command,)
@@ -307,7 +313,7 @@ def start_server(user: Annotated[models.User, Depends(user_with_permissions(mode
     return server_info
 
 
-@app.post('/servers/{server_id}/stop', summary='Stop')
+@app.post('/servers/{server_id}/stop', summary='Stop', openapi_extra=OpenApiExtra(api_response='Ignore', permissions_required=[models.Permission.STOP]).model_dump(mode='json'))
 def stop_server(user: Annotated[models.User, Depends(user_with_permissions(models.Permission.STOP))], server_id: str) -> ServerInfo:
     docker_runner = DockerRunner()
     return docker_runner.stop_game_server(server_id=server_id)
@@ -317,13 +323,16 @@ class CreateServer(BaseModel):
     image_id: str
 
 
-@app.post('/servers')
+@app.post('/servers', openapi_extra=OpenApiExtra(api_response='Ignore', permissions_required=[models.Permission.CREATE]).model_dump(mode='json'))
 def create_server(user: Annotated[models.User, Depends(user_with_permissions(models.Permission.CREATE))], request: CreateServer) -> ServerInfo:
     docker_runner = DockerRunner()
+    if not models.Permission.ADMIN in user.permissions and user.max_owned_servers < len(docker_runner.list_servers(user_id=user.username)):
+        raise HTTPException(401, 'Unauthorized, Max servers count reached')
+        
     return docker_runner.create_game_server(image_id=request.image_id, user_id=user.username)
 
 
-@app.delete('/servers/{server_id}')
+@app.delete('/servers/{server_id}', openapi_extra=OpenApiExtra(api_response='Ignore', permissions_required=[models.Permission.DELETE]).model_dump(mode='json'))
 def delete_server(user: Annotated[models.User, Depends(user_with_permissions(models.Permission.DELETE))], server_id: str) -> None:
     docker_runner = DockerRunner()
     return docker_runner.delete_game_server(server_id=server_id)
@@ -332,10 +341,8 @@ def delete_server(user: Annotated[models.User, Depends(user_with_permissions(mod
 class RunCommandRequest(BaseModel):
     command: str
 
-@app.post('/servers/{server_id}/command')
+@app.post('/servers/{server_id}/command', openapi_extra=OpenApiExtra(api_response='Ignore', permissions_required=[models.Permission.RUN_COMMAND]).model_dump(mode='json'))
 def run_command(user: Annotated[models.User, Depends(user_with_permissions(models.Permission.RUN_COMMAND))], server_id: str, request: RunCommandRequest) -> str:
-    if models.Permission.RUN_COMMAND not in user.permissions and models.Permission.ADMIN not in user.permissions:
-        raise HTTPException(401, 'Unauthorized')
     docker_runner = DockerRunner()
     response = docker_runner.run_command(server_id=server_id, command=request.command)
     if response is None:
@@ -359,10 +366,10 @@ class FileBrowserData(BaseModel):
 
 
 class StartFileBrowserRequest(BaseModel):
-    server_id: str = Field(json_schema_extra=JsonSchemaExtra(fetch_url='/servers', fetch_key_path='id_', fetch_display_path='nickname').model_dump(by_alias=True))
+    server_id: str = Field(json_schema_extra=JsonSchemaExtraRequest(fetch_url='/servers', fetch_key_path='id_', fetch_display_path='nickname').model_dump(by_alias=True))
 
 
-@app.post('/browsers')
+@app.post('/browsers', openapi_extra=OpenApiExtra(api_response='Ignore', permissions_required=[models.Permission.BROWSE]).model_dump(mode='json'))
 def start_file_browser(user: Annotated[models.User, Depends(user_with_permissions(models.Permission.BROWSE))], server_id: StartFileBrowserRequest) -> FileBrowserData:
     docker_runner = DockerRunner()
     file_browser_server_info = docker_runner.start_file_browser(server_id=server_id.server_id, owner_id=user.username, hashed_password=user.password_hash)
@@ -375,7 +382,7 @@ def get_file_browsers(user: Annotated[models.User, Depends(user_data)]) -> list[
     return docker_runner.list_file_browser_servers(user_id=user.username)
 
 class StopFileBrowserRequest(BaseModel):
-    server_id: str = Field(json_schema_extra=JsonSchemaExtra(fetch_url='/servers', fetch_key_path='id_', fetch_display_path='nickname').model_dump(by_alias=True))
+    server_id: str = Field(json_schema_extra=JsonSchemaExtraRequest(fetch_url='/servers', fetch_key_path='id_', fetch_display_path='nickname').model_dump(by_alias=True))
 
 @app.delete('/browsers')
 def stop_file_browser(user: Annotated[models.User, Depends(user_data)], server_id: StopFileBrowserRequest):
@@ -387,7 +394,7 @@ class SetServerNicknameRequest(BaseModel):
     nickname: str
 
 
-@app.post('/servers/{server_id}/nickname', summary='Set Nickname', description='Set Nickname')
+@app.post('/servers/{server_id}/nickname', summary='Set Nickname', description='Set Nickname', openapi_extra=OpenApiExtra(api_response='Ignore', permissions_required=[models.Permission.ADMIN]).model_dump(mode='json'))
 def api_set_server_nickname(user: Annotated[models.User, Depends(user_with_permissions(models.Permission.ADMIN))], server_id: str, set_server_nickname_request: SetServerNicknameRequest):
     DockerRunner().get_server_info(server_id=server_id)
 
@@ -396,11 +403,11 @@ def api_set_server_nickname(user: Annotated[models.User, Depends(user_with_permi
 
 
 class SetServerPermissionsRequest(BaseModel):
-    username: str = Field(json_schema_extra=JsonSchemaExtra(fetch_url='/users', fetch_key_path='username', fetch_display_path='username').model_dump(by_alias=True))
+    username: str = Field(json_schema_extra=JsonSchemaExtraRequest(fetch_url='/users', fetch_key_path='username', fetch_display_path='username').model_dump(by_alias=True))
     permissions: list[models.Permission] = Field(default_factory=list)
 
 
-@app.post('/servers/{server_id}/permissions', summary='Add Permissions')
+@app.post('/servers/{server_id}/permissions', summary='Add Permissions', openapi_extra=OpenApiExtra(api_response='Ignore', permissions_required=[models.Permission.ADMIN]).model_dump(mode='json'))
 def api_set_server_user_permissions(user: Annotated[models.User, Depends(user_with_permissions(models.Permission.ADMIN))], server_id: str, request: SetServerPermissionsRequest):
     DockerRunner().get_server_info(server_id=server_id)
     with get_db() as db:
