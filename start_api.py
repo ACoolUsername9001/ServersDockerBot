@@ -2,6 +2,7 @@ from contextlib import contextmanager
 from datetime import datetime, timedelta
 from functools import wraps
 import json
+import logging
 from typing_extensions import Annotated
 from uuid import uuid4
 from sqlalchemy.orm import Session
@@ -187,9 +188,10 @@ def user_with_permissions(*permissions):
             server_permissions = get_server_permissions_for_user(db, server_id=server_id, user_id=user.username)
         
         if not server_permissions:
+            logging.warning(f'User {user.username} has no special permissions for this servrer')
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Could not validate credentials",
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Permission Denied",
                 headers={"WWW-Authenticate": "Bearer"},
             )
         
@@ -402,7 +404,7 @@ class SetServerPermissionsRequest(BaseModel):
 def api_set_server_user_permissions(user: Annotated[models.User, Depends(user_with_permissions(models.Permission.ADMIN))], server_id: str, request: SetServerPermissionsRequest):
     DockerRunner().get_server_info(server_id=server_id)
     with get_db() as db:
-        set_server_permissions_for_user(db, models.ServerPermissions(server_id=server_id, user_id=user.username, permissions=request.permissions))
+        set_server_permissions_for_user(db, models.ServerPermissions(server_id=server_id, user_id=request.username, permissions=request.permissions))
 
 
 @app.get('/servers/{server_id}/permissions', summary='Get Permissions', include_in_schema=False)
