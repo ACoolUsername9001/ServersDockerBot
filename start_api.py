@@ -405,3 +405,13 @@ def api_set_server_user_permissions(user: Annotated[models.User, Depends(user_wi
     DockerRunner().get_server_info(server_id=server_id)
     with get_db() as db:
         set_server_permissions_for_user(db, models.ServerPermissions(server_id=server_id, user_id=request.username, permissions=request.permissions))
+
+
+@app.get('/servers/{server_id}/permissions', summary='Get Permissions', include_in_schema=False)
+def api_get_server_user_permissions(user: Annotated[models.User, Depends(user_with_permissions(models.Permission.ADMIN))], server_id: str) -> list[models.Permission]:
+    with get_db() as db:
+        permissions = get_server_permissions_for_user(db, server_id=server_id, user_id=user.username)
+    if permissions is None:
+        return []
+
+    return permissions.permissions
