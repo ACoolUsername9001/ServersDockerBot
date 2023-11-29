@@ -190,6 +190,13 @@ def user_with_permissions(*permissions):
                 detail="Could not validate credentials",
                 headers={"WWW-Authenticate": "Bearer"},
             )
+        
+
+        server_info = DockerRunner().get_server_info(server_id=server_id)
+
+        if server_info.user_id == user.username:    
+            return user
+        
         with get_db() as db:
             server_permissions = get_server_permissions_for_user(db, server_id=server_id, user_id=user.username)
         
@@ -204,17 +211,11 @@ def user_with_permissions(*permissions):
         if len(missing_permissions - set(server_permissions.permissions)) == 0 or models.Permission.ADMIN in server_permissions.permissions:
             return user
 
-        server_info = DockerRunner().get_server_info(server_id=server_id)
-
-        if server_info.user_id != user.username:    
-            raise HTTPException(
+        raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Could not validate credentials",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-        
-        return user
-
     return users_with_permissions_or_owner
 
 
@@ -320,7 +321,7 @@ def stop_server(user: Annotated[models.User, Depends(user_with_permissions(model
 
 
 class CreateServer(BaseModel):
-    image_id: str
+    image_id: str = Field(json_schema_extra=JsonSchemaExtraRequest(fetch_url='/images', fetch_key_path='id_', fetch_display_path='display_name').model_dump())
 
 
 @app.post('/servers', openapi_extra=OpenApiExtra(api_response='Ignore', permissions=[models.Permission.CREATE]).model_dump(mode='json'))

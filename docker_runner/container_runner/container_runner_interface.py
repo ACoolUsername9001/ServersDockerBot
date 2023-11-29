@@ -37,6 +37,11 @@ class ImageInfo(BaseModel):
     @property
     def id_(self) -> str:
         return f'{self.name}:{self.version}'
+    
+    @computed_field()
+    @property
+    def display_name(self) -> str:
+        return f'{self.name} {self.version}'.title()
 
 
 class ServerInfo(BaseModel):
