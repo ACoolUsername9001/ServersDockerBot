@@ -89,7 +89,7 @@ def get_all_server_nicknames(db: Session) -> dict[str, str]:
 
 
 def set_server_permissions_for_user(db: Session, server_permissions: models.ServerPermissions):
-    db_server_permissiosn = models.DatabasePermissions(server_id=server_permissions.server_id, user_id=server_permissions.user_id, scope=','.join(server_permissions.permissions))
+    db_server_permissiosn = models.DatabasePermissions(server_id=server_permissions.server_id, user_id=server_permissions.user_id, scope=':'.join(server_permissions.permissions))
     db.query(models.DatabasePermissions).filter(models.DatabasePermissions.server_id == server_permissions.server_id, models.DatabasePermissions.user_id == server_permissions.user_id).delete()
     db.add(db_server_permissiosn)
     db.commit()
