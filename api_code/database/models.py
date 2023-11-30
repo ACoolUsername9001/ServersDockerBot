@@ -3,7 +3,7 @@
 from enum import Enum
 from typing import Self
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import Column, Integer, String
 
 from .database import Base
@@ -22,8 +22,8 @@ class Permission(str, Enum):
 class UserBase(BaseModel):
     username: str
     email: str
-    permissions: list[Permission]
     max_owned_servers: int = 5
+    permissions: list[Permission] = Field(default_factory=list)
 
     @classmethod
     def from_database_user(cls, database_user: 'DatabaseUser') -> Self:
@@ -109,7 +109,7 @@ class ServerNickname(BaseModel):
 class ServerPermissions(BaseModel):
     server_id: str
     user_id: str
-    permissions: list[Permission]
+    permissions: list[Permission] = Field(default_factory=list)
 
     @classmethod
     def from_database_permissions(cls, database_permissions: DatabasePermissions) -> Self:

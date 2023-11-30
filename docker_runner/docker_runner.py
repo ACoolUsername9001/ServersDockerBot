@@ -364,7 +364,7 @@ class DockerRunner(ContainerRunner):
         logs = ANSI_ESCAPE.sub(b'', container.logs(tail=lines_limit))
         return _convert_to_string(logs)
 
-    def list_file_browser_servers(self, user_id: str) -> list[FileBrowserInfo]:
+    def list_file_browser_servers(self, user_id: Optional[str] = None) -> list[FileBrowserInfo]:
         containers = cast(list[Container], self.docker.containers.list(filters={'label': create_labels_filter(user_id=user_id, type=ServerType.FILE_BROWSER.value)}))
         server_info_list: list[FileBrowserInfo] = []
         for container in containers:

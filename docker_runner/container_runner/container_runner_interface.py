@@ -75,7 +75,7 @@ class ContainerRunner(Protocol):
         ...
 
     @abc.abstractmethod
-    def list_file_browser_servers(self, user_id: str) -> list[FileBrowserInfo]:
+    def list_file_browser_servers(self, user_id: Optional[str] = None) -> list[FileBrowserInfo]:
         ...
 
     @abc.abstractmethod

@@ -362,6 +362,13 @@ def get_server_logs(user: Annotated[models.User, Depends(user_data)], server_id:
     return response
 
 
+@app.post('/servers/{server_id}/browse', openapi_extra=OpenApiExtra(api_response='Ignore', permissions=[models.Permission.BROWSE]).model_dump(mode='json'))
+def start_file_browser_from_server(user: Annotated[models.User, Depends(user_with_permissions(models.Permission.BROWSE))], server_id: str) -> str:
+    docker_runner = DockerRunner()
+    file_browser_server_info = docker_runner.start_file_browser(server_id=server_id, owner_id=user.username, hashed_password=user.password_hash)
+    return file_browser_server_info.url
+
+
 class FileBrowserData(BaseModel):
     url: str
 
