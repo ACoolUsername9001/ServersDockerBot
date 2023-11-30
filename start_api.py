@@ -5,6 +5,7 @@ import json
 import logging
 from typing_extensions import Annotated
 from uuid import uuid4
+from aiohttp import content_disposition_filename
 from sqlalchemy.orm import Session
 from typing import Annotated, Literal, Optional, cast
 from fastapi import Depends, FastAPI, HTTPException, status
@@ -362,40 +363,89 @@ def get_server_logs(user: Annotated[models.User, Depends(user_data)], server_id:
     return response
 
 
-@app.post('/servers/{server_id}/browse', openapi_extra=OpenApiExtra(api_response='Ignore', permissions=[models.Permission.BROWSE]).model_dump(mode='json'))
+@app.post('/servers/{server_id}/browse', summary='Browse', openapi_extra=OpenApiExtra(api_response='Browse', permissions=[models.Permission.BROWSE]).model_dump(mode='json'))
 def start_file_browser_from_server(user: Annotated[models.User, Depends(user_with_permissions(models.Permission.BROWSE))], server_id: str) -> str:
     docker_runner = DockerRunner()
     file_browser_server_info = docker_runner.start_file_browser(server_id=server_id, owner_id=user.username, hashed_password=user.password_hash)
     return file_browser_server_info.url
 
 
-class FileBrowserData(BaseModel):
-    url: str
-
-
 class StartFileBrowserRequest(BaseModel):
     server_id: str = Field(json_schema_extra=JsonSchemaExtraRequest(fetch_url='/servers', fetch_key_path='id_', fetch_display_path='nickname').model_dump(by_alias=True))
-
-
-@app.post('/browsers', openapi_extra=OpenApiExtra(api_response='Ignore', permissions=[models.Permission.BROWSE]).model_dump(mode='json'))
-def start_file_browser(user: Annotated[models.User, Depends(user_with_permissions(models.Permission.BROWSE))], server_id: StartFileBrowserRequest) -> FileBrowserData:
-    docker_runner = DockerRunner()
-    file_browser_server_info = docker_runner.start_file_browser(server_id=server_id.server_id, owner_id=user.username, hashed_password=user.password_hash)
-    return FileBrowserData(url=file_browser_server_info.url)
 
 
 @app.get('/browsers')
 def get_file_browsers(user: Annotated[models.User, Depends(user_data)]) -> list[FileBrowserInfo]:
     docker_runner = DockerRunner()
-    return docker_runner.list_file_browser_servers(user_id=user.username)
+    responses: list[FileBrowserInfo] = []
+    with get_db() as db:
+        nicknames = get_all_server_nicknames(db)
+        for server in docker_runner.list_file_browser_servers():
+            if models.Permission.ADMIN in user.permissions:
+                responses.append(server)
+                continue
 
-class StopFileBrowserRequest(BaseModel):
-    server_id: str = Field(json_schema_extra=JsonSchemaExtraRequest(fetch_url='/servers', fetch_key_path='id_', fetch_display_path='nickname').model_dump(by_alias=True))
+            elif server.owner_id == user.username:
+                responses.append(server)
+                continue
+            
+            elif server.connected_to.user_id == user.username:
+                responses.append(server)
+                continue
+            else:
+                permissions = get_server_permissions_for_user(db, user_id=user.username, server_id=server.connected_to.id_)
+                if permissions is None:
+                    continue
 
-@app.delete('/browsers')
-def stop_file_browser(user: Annotated[models.User, Depends(user_data)], server_id: StopFileBrowserRequest):
+                if models.Permission.ADMIN in permissions.permissions:
+                    responses.append(server)
+                    continue
+
+    for response in responses:
+        response.connected_to.nickname = nicknames.get(response.connected_to.id_)
+    
+    return responses
+
+def browser_owner_server_owner_or_permissions(*permissions: models.Permission):
+    def internal_validator(user: Annotated[models.User, Depends(user_data)], browser_id: Optional[str] = None):
+        if models.Permission.ADMIN in user.permissions:
+            return user
+        
+        if not browser_id:
+            raise HTTPException(
+                status_code=401,
+                detail='Unauthorized'
+            )
+        
+        docker_runner = DockerRunner()
+        file_browser = docker_runner.get_file_browser_by_id(browser_id=browser_id)
+        
+        if file_browser is None:
+            raise HTTPException(
+                status_code=401,
+                detail='Unauthorized'
+            )
+            
+        if user.username in (file_browser.owner_id, file_browser.connected_to.user_id):
+            return user
+        
+        with get_db() as db:
+            server_permissions = get_server_permissions_for_user(db=db, server_id=file_browser.connected_to.id_, user_id=user.username)
+            if server_permissions is not None:
+                if len(set(permissions) - set(server_permissions.permissions) - set(user.permissions)) == 0:
+                    return user
+        
+        raise HTTPException(
+            status_code=401,
+            detail='Unauthorized'
+        )
+    return internal_validator
+
+
+@app.delete('/browsers/{browser_id}')
+def stop_file_browser(user: Annotated[models.User, Depends(browser_owner_server_owner_or_permissions(models.Permission.ADMIN))], browser_id: str):
     docker_runner = DockerRunner()
-    docker_runner.stop_file_browsing(user_id=user.username, server_id=server_id.server_id)
+    docker_runner.stop_file_browsing_by_id(browser_id=browser_id)
 
 
 class SetServerNicknameRequest(BaseModel):

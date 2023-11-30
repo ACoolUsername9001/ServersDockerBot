@@ -112,7 +112,7 @@ class ContainerRunner(Protocol):
         ...
 
     @abc.abstractmethod
-    def stop_file_browsing(self, user_id: str, server_id: Optional[str] = None):
+    def stop_file_browsing_by_user_and_server(self, user_id: str, server_id: Optional[str] = None):
         ...
 
     @abc.abstractmethod

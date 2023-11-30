@@ -301,31 +301,33 @@ class DockerRunner(ContainerRunner):
         if hashed_password is not None:
             filebrowser_command += f' --username {owner_id} --password "{hashed_password}"'
 
-        server_info = self.get_server_info(server_id=server_id, user_id=owner_id)
+        server_info = self.get_server_info(server_id=server_id)
 
         mounts = [Mount(source=server_info.id_, target='/tmp/data', type='volume')]
 
-        container = cast(
-            Container,
-            self.docker.containers.create(
-                image=FILE_BROWSER_IMAGE,
-                auto_remove=True,
-                command=filebrowser_command,
-                mounts=mounts,
-                network='browsers',
-                labels=ContainerLabels(
-                    user_id=owner_id, image_id=server_info.image.id_, volume_id=server_info.id_, type=ServerType.FILE_BROWSER
-                ).model_dump(mode='json'),
-                tty=True,
-            ),
-        )
-        container.start()
-        time.sleep(0.01)
-        container = cast(Container, self.docker.containers.get(container_id=container.id))
+        container = self._get_server_container(server_info=server_info, user_id=owner_id, server_type=ServerType.FILE_BROWSER)
+        if container is None:
+            container = cast(
+                Container,
+                self.docker.containers.create(
+                    image=FILE_BROWSER_IMAGE,
+                    command=filebrowser_command,
+                    mounts=mounts,
+                    network='browsers',
+                    labels=ContainerLabels(
+                        user_id=owner_id, image_id=server_info.image.id_, volume_id=server_info.id_, type=ServerType.FILE_BROWSER,
+                    ).model_dump(mode='json'),
+                    tty=True,
+                    auto_remove=True,
+                ),
+            )
+            container.start()
+            time.sleep(0.01)
+            container = cast(Container, self.docker.containers.get(container_id=container.id))
 
         return FileBrowserInfo(id_=container.id[:12], domain=f'browsers.{self._domain}', connected_to=server_info, owner_id=owner_id)
 
-    def stop_file_browsing(self, user_id: str, server_id: Optional[str] = None):
+    def stop_file_browsing_by_user_and_server(self, user_id: str, server_id: Optional[str] = None):
         file_browsers = cast(
             list[Container],
             self.docker.containers.list(
@@ -337,6 +339,16 @@ class DockerRunner(ContainerRunner):
         )
         for file_browser in file_browsers:
             file_browser.stop()
+
+    def stop_file_browsing_by_id(self, browser_id: str):
+        file_browser = self.get_file_browser_by_id(browser_id=browser_id)
+        if file_browser is None:
+            return
+        try:
+            container = cast(Container, self.docker.containers.get(file_browser.id_))
+        except Exception as e:
+            return
+        container.stop()
 
     def list_server_ports(self, server_id: str) -> List[Port]:
         server_info = self.get_server_info(server_id=server_id)
@@ -375,6 +387,26 @@ class DockerRunner(ContainerRunner):
             server_info_list.append(FileBrowserInfo(id_=container.id[:12], domain=f'browsers.{self._domain}', connected_to=server_info, owner_id=labels.user_id))
 
         return server_info_list
+
+    def get_file_browser_by_user_and_server(self, user_id: str, server_id: str) -> Optional[FileBrowserInfo]:
+        containers = cast(list[Container], self.docker.containers.list(filters={'label': create_labels_filter(user_id=user_id, volume_id=server_id, type=ServerType.FILE_BROWSER.value)}))
+        if len(containers) == 0:
+            return None
+        container = containers[0]
+        labels = ContainerLabels(**container.attrs.get('Config', {}).get('Labels', {}))
+        server_info = self.get_server_info(server_id=labels.volume_id)
+        return FileBrowserInfo(id_=container.id[:12], domain=f'browsers.{self._domain}', connected_to=server_info, owner_id=labels.user_id)
+
+    def get_file_browser_by_id(self, browser_id: str) -> Optional[FileBrowserInfo]:
+        try:
+            container = self.docker.containers.get(browser_id)
+        except Exception as e:
+            return None
+        
+        labels = ContainerLabels(**container.attrs.get('Config', {}).get('Labels', {}))
+        server_info = self.get_server_info(server_id=labels.volume_id)
+        return FileBrowserInfo(id_=container.id[:12], domain=f'browsers.{self._domain}', connected_to=server_info, owner_id=labels.user_id)
+
 
     def stop_game_server(self, server_id: str) -> ServerInfo:
         server_info = self.get_server_info(server_id=server_id)

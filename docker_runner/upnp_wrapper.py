@@ -144,8 +144,8 @@ class UPNPWrapper(ContainerRunner):
     def start_file_browser(self, server_id: str, owner_id: str, hashed_password=None) -> ServerInfo:
         return self._container_runner.start_file_browser(server_id=server_id, owner_id=owner_id, hashed_password=hashed_password)
 
-    def stop_file_browsing(self, user_id: str, server_id: Optional[str] = None):
-        return self._container_runner.stop_file_browsing(user_id=user_id, server_id=server_id)
+    def stop_file_browsing_by_user_and_server(self, user_id: str, server_id: Optional[str] = None):
+        return self._container_runner.stop_file_browsing_by_user_and_server(user_id=user_id, server_id=server_id)
 
     def get_server_logs(
         self,

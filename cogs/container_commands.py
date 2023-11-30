@@ -63,7 +63,7 @@ class ContainerCommands(commands.Cog):
     @app_commands.guilds(1013092707494809700)
     async def stop_browsing(self, interaction: Interaction, game: Optional[str] = None):
         user_id = interaction.user.id
-        self.container_runner.stop_file_browsing(user_id=str(user_id), server_id=game)
+        self.container_runner.stop_file_browsing_by_user_and_server(user_id=str(user_id), server_id=game)
         await interaction.response.send_message('Stopped file browser', ephemeral=True)
 
     @app_commands.command(name='delete', description='This will create a new minecraft server')
